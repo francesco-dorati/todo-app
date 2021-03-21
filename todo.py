@@ -14,6 +14,7 @@ def main():
     todos_color = 'grey'
     attrs = ['bold']
 
+    print()
     if len(sys.argv) == 1:
         # get 
         todos = get()
