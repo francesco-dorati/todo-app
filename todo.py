@@ -7,7 +7,6 @@ file_path = '/usr/local/bin/todos/todos.txt'
 
 """
     TODO
-    - add colors
     - add highlight
 """
 
