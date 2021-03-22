@@ -4,12 +4,12 @@
 ## Installation
 Clone repository:
 ```
-git clone https://github.com/francesco-dorati/todo.git
+git clone https://github.com/francesco-dorati/todos.git
 ```
 
 Move to /usr/local/bin folder:
 ```
-mv todo /usr/local/bin/todos
+mv todos /usr/local/bin
 ```
 
 Add symbolic link:
