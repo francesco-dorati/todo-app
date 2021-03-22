@@ -1,15 +1,15 @@
-# todo
+# TODOs
 **todo** is a program to keep track of todos with simple commands.
 
 ## Installation
 Clone repository:
 ```
-git clone https://github.com/francesco-dorati/todo.git
+git clone https://github.com/francesco-dorati/todos.git
 ```
 
 Move to /usr/local/bin folder:
 ```
-mv todo /usr/local/bin/todos
+mv todos /usr/local/bin
 ```
 
 Add symbolic link:
@@ -18,26 +18,20 @@ ln -s /usr/local/bin/todo /usr/local/bin/todos/todo.py
 ```
 
 ## Usage
-Get all TODOs:
+#### Get all TODOs:
 ```
 todo
 ```
+<img src="images/get.png" width="250">
 
-Add a TODO:
+#### Add a TODO:
 ```
 todo add [todo]
 ```
-```
-example:
-todo add "New Todo"
-```
+<img src="images/add.png" width="250">
 
-Remove a TODO:
+#### Remove a TODO:
 ```
 todo remove [index]
-```
-```
-example:
-todo remove 1
-```
-
+``` 
+<img src="images/remove.png" width="250">
