@@ -1,5 +1,6 @@
 #!/usr/bin/env python3
 import sys
+import os
 
 from termcolor import colored
 
@@ -56,6 +57,11 @@ def main():
 
 def get():
     todos = []
+
+    # check if file exists
+    if not os.path.isfile(file_path):
+        open(file_path, 'w').close()
+
     with open(file_path, 'r') as file:
         for line in file:
             todos.append(line.strip())
