@@ -7,6 +7,14 @@ file_path = '/usr/local/bin/todos/todos.txt'
 
 """
     TODO
+    add
+    - print message when creating a todo
+    remove
+    - add remove *
+    - when remove preserve index
+    - remove with todo name
+    
+    - add branches
     - add highlight
 """
 
