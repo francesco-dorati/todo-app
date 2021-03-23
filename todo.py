@@ -8,6 +8,9 @@ file_path = '/usr/local/bin/todos/todos.txt'
 
 """
     TODO
+    - add todo init
+        - do you want to use the local version?
+        - insert the file path/server path
     add
     - print message when creating a todo
     remove
