@@ -8,16 +8,24 @@ from termcolor import colored
 
 """
     TODO
-    - fix response on local
-    remove
-    - remove with todo name
+    - add settings and make todos.json 
+    - settings user change main and local todo file
+    - add local todos
+
+    - todo remove multiple elements
+
+    - add other functionality shown in "todo all"
+    - idea sector "todo add idea"
+
+    - remove color on created
     
+    - fix response on local
     - fix readme
     - add branches
     - add highlight
 """
 
-file_name = 'todos.txt'
+file_name = 'todos.json'
 
 # load config
 with open('config.json') as file:
@@ -28,6 +36,7 @@ def main():
     attrs = ['bold']
 
     print()
+    # if user wrote only 1 argument
     if len(sys.argv) == 1:
         # get 
         todos = get()
@@ -38,6 +47,7 @@ def main():
         else:
             print(colored('TODO list is empty.', 'grey', attrs=attrs))
 
+    # if user wrote 3 arguments
     elif len(sys.argv) == 3:
         option = sys.argv[1]
         
@@ -46,7 +56,9 @@ def main():
             added = add(sys.argv[2])
             todos = get()
 
-            print(colored('Added', attrs=attrs), colored(f'"{added}"', 'green', attrs=attrs), colored('successfully!', attrs=attrs))
+            print(colored('Added', attrs=attrs), 
+                    colored(f'"{added}"', 'green', attrs=attrs), 
+                    colored('successfully!', attrs=attrs))
             print(colored('\nTODO:', attrs=attrs))
             for index, todo in enumerate(todos):
                 if todo != added:
@@ -58,16 +70,17 @@ def main():
         elif option == 'remove':
             removed = remove(sys.argv[2])['removed']
 
-            # if removed one
+            # if removed all
             if isinstance(removed, list):
-                print(colored('Removed', attrs=attrs), colored(f'all', 'red', attrs=attrs), colored('successfully!', attrs=attrs))
+                print(colored('Removed', attrs=attrs), 
+                        colored(f'all', 'red', attrs=attrs), 
+                        colored('successfully!', attrs=attrs))
                 print(colored('\nTODO:', attrs=attrs))
-
                 # print all removed todos
                 for todo in removed:
                     print(colored(f'   [-] {todo["text"]}', 'red', attrs=attrs))
 
-            # if removed all
+            # if removed one
             else:
                 # get all todos
                 todos = get()
@@ -83,6 +96,10 @@ def main():
                         # print removed todo
                         print(colored(f'   [-] {removed["text"]}', 'red', attrs=attrs))
                     print(colored(f'   [{index + 1}] {todo}', todos_color, attrs=attrs))
+
+        # settings
+        elif option == 'settings':
+            pass
 
         else:
             print(f'Illegal option "{sys.argv[1]}".')
