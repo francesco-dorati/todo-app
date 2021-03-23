@@ -1,4 +1,4 @@
 {
-   "remote": false,
-   "path": "/usr/local/bin/todo-client"
+   "remote": true,
+   "path": "http://localhost:5000/"
 }
