@@ -4,7 +4,7 @@
 ## Installation
 Clone repository:
 ```
-git clone https://github.com/francesco-dorati/todos.git
+git clone https://github.com/francesco-dorati/todo-client.git
 ```
 
 Move to /usr/local/bin folder:
