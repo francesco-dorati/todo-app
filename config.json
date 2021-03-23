@@ -1,4 +1,4 @@
 {
-   "local": true,
-   "path": "/usr/local/bin"
+   "remote": false,
+   "path": "/usr/local/bin/todo-client"
 }
