@@ -1,16 +1,12 @@
 #!/usr/bin/env python3
 import sys
 import os
+import json
 
 from termcolor import colored
 
-file_path = '/usr/local/bin/todos/todos.txt'
-
 """
     TODO
-    - add todo init
-        - do you want to use the local version?
-        - insert the file path/server path
     add
     - print message when creating a todo
     remove
@@ -21,6 +17,11 @@ file_path = '/usr/local/bin/todos/todos.txt'
     - add branches
     - add highlight
 """
+
+# load config
+with open('config.json') as file:
+    config = json.load(file)
+
 
 def main():
     todos_color = 'grey'
