@@ -6,7 +6,7 @@ app = Flask(__name__)
 
 """
     TODOs:
-    - change add remove response ({'added': 'todo'})
+    - change add remove response ({'todos': [{}, {}], 'added': 1 | [2, 3, 4] | 'all'})
 """
 
 file_name = 'todos.txt'
