@@ -8,10 +8,10 @@ from termcolor import colored
 
 """
     TODO
-    - add local todos
     - add git serve to activate server
 
-    - todo remove multiple elements
+    - "todo remove" print todos and prompts for dalete until -1 given 
+    - "todo remove" multiple elements
 
     - add other functionality shown in "todo all"
     - idea sector "todo add idea"
@@ -24,11 +24,19 @@ from termcolor import colored
     - add highlight
 """
 
-base_path = '/'.join(os.path.realpath(__file__).split('/')[:-1]) + '/'
-file_path = base_path + 'todos.json'
+names = {
+    'todos': 'todos.json',
+    'config': 'config.json'
+}
+
+paths = {
+    'base': '/'.join(os.path.realpath(__file__).split('/')[:-1]) + '/',
+    'todos': '/'.join(os.path.realpath(__file__).split('/')[:-1]) + '/' + names['todos'],
+    'config': '/'.join(os.path.realpath(__file__).split('/')[:-1]) + '/' + names['config'],
+}
 
 # load config
-with open(base_path + 'config.json') as file:
+with open(paths['config']) as file:
     config = json.load(file)
 
 def main():
@@ -141,8 +149,7 @@ def main():
             if len(sys.argv) == 2:
                 # get
                 # change base path
-                file_path = 'todos.json'
-                todos = get()
+                todos = get(names['todos'])
 
                 # print
                 if len(todos) > 0:
@@ -158,8 +165,7 @@ def main():
 
                 # add
                 if local_option == 'add':
-                    file_path = 'todos.json'
-                    todos = add(sys.argv[3])
+                    todos = add(sys.argv[3], names['todos'])
 
                     # print
                     print(colored('Locally added', attrs=attrs), 
@@ -174,8 +180,7 @@ def main():
 
                 # remove
                 elif local_option == 'remove':
-                    file_path = 'todos.json'
-                    todos = remove(sys.argv[3])
+                    todos = remove(sys.argv[3], names['todos'])
 
                     # if removed all
                     if todos['removed'] == 'all':
@@ -230,7 +235,7 @@ def main():
 
                         # write changes to file
                         config['mode'] = mode
-                        with open(base_path + 'config.json', 'w') as file:
+                        with open(paths['config'], 'w') as file:
                             file.write(json.dumps(config))
 
 
@@ -244,55 +249,63 @@ def main():
 
 
 # GET
-def get():
-    print(file_path)
+def get(path = None):
+    if not path:
+        path = paths['todos']
+
     # check if file exists
-    if not os.path.isfile(file_path):
-        with open(file_path, 'w') as file:
+    if not os.path.isfile(path):
+        with open(path, 'w') as file:
             file.write(json.dumps([]))
         return []
 
     # read file
-    with open(file_path, 'r') as file:
+    with open(path, 'r') as file:
         todos = json.loads(file.read())
 
     return todos
 
 # ADD
-def add(todo):
+def add(added, path = None):
+    if not path:
+        path = paths['todos']
+
     # get and append new todo
-    todos = get()
-    todos.append(todo)
+    todos = get(path)
+    todos.append(added)
 
     # write to file
-    with open(file_path, 'w') as file:
+    with open(path, 'w') as file:
         file.write(json.dumps(todos))
 
     return {'todos': todos, 'added': len(todos)}
 
 
 # REMOVE
-def remove(arg):
-    todos = get()
+def remove(removed, path = None):
+    if not path:
+        path = paths['todos']
+
+    todos = get(path)
 
     # check index validity
-    if (not arg.isnumeric() and arg != 'all') or (arg.isnumeric() and int(arg) > len(todos)):
+    if (not removed.isnumeric() and removed != 'all') or (removed.isnumeric() and int(removed) > len(todos)):
         return "Invalid index", 404
  
     # delete all
-    if arg == 'all':
-        with open(file_path, 'w') as file:
+    if removed == 'all':
+        with open(path, 'w') as file:
             file.write(json.dumps([]))
 
         return {'todos': todos, 'removed': 'all'}
 
     # delete one
     else:
-        index = int(arg) - 1
+        index = int(removed) - 1
         modified = [*todos]
         modified.pop(index)
 
-        with open(file_path, 'w') as file:
+        with open(path, 'w') as file:
             file.write(json.dumps(modified))
 
         return {'todos': todos, 'removed': index}
