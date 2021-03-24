@@ -8,11 +8,26 @@ from termcolor import colored
 
 """
     TODO
+    commands
+        - todo rename
+        - todo remove
+        - todo link
+
+    - rethink local (store files in name.todo)
+    - add todo create/init
+    - todo create name
+        - todo link name
+        - modify get
+
+    - todo welcome
+    - main file is linked to other local.todo stored in links
     - an title to and other data to todofile 
     - store todos in different files which are sections
-    - maybe add a directory for todofiles
     - local is a reserved keyword which refers to loal file, add possibility to add common keywords which refer to files
     - link todos to mainfiles (maybe fetch data from local)
+
+    - todo branch
+    
     - add order
     - add git serve to activate server
 
@@ -24,7 +39,6 @@ from termcolor import colored
 
     - remove color on created
     
-    - fix response on local
     - fix readme
     - add branches
     - add highlight
@@ -71,12 +85,24 @@ def main():
             print(colored('    [?] This TODO list is empty', 'grey', attrs=attrs))
             print(colored('\nAdd one by running: todo add <todo>', 'grey', attrs=attrs))
 
-    # if user wrote 2 or more2 or more arguments
+    # if user wrote 2 or more arguments
     elif len(sys.argv) >= 2:
         option = sys.argv[1]
         
+        # init
+        if option == 'init':
+            # check if file exists
+            if os.path.isfile(paths['main']):
+                print(colored(f'\nFile {colored(paths["main"], "red")} already exists.', attrs=attrs)) 
+                exit(3)
+
+            # create file
+            with open(paths['main'], 'w') as file:
+                file.write(json.dumps({'name': 'main', 'todos': [], 'links': {}}))
+                print(colored(f'\nTODO list initialized successfully!', attrs=attrs)) 
+        
         # add
-        if option == 'add':
+        elif option == 'add':
             # if local
             todos = add(paths[config['mode']], sys.argv[2])
         
@@ -119,6 +145,41 @@ def main():
                         print(colored(f'   [-] {todo}', 'red', attrs=attrs))
                     else:
                         print(colored(f'   [{index + 1 if index < todos["removed"] else index}] {todo}', todos_color, attrs=attrs))
+
+        # create
+        elif option == 'create':
+            # get name
+            name = os.path.basename(os.getcwd()) if len(sys.argv) == 2 else sys.argv[2]
+
+            # check if file exists
+            if os.path.isfile(name + '.todo'):
+                print(colored(f'\nFile {colored(name, "red")} already exists.', attrs=attrs)) 
+                exit(3)
+                
+            # create file
+            with open(name + '.todo', 'w') as file:
+                file.write(json.dumps({'name': name, 'todos': []}))
+
+            # print
+            print(colored(f'\nLocal TODO list', attrs=attrs), 
+                    colored(name, "green", attrs=attrs),
+                    colored('successfully created!', attrs=attrs))
+
+
+        # link
+        elif option == 'link':
+            # get name
+            name = os.path.basename(os.getcwd()) if len(sys.argv) == 2 else sys.argv[2]
+
+            # get todos and add link
+            todos = get(paths['main'])
+            todos['links'][name] = os.getcwd() + '/' + name + '.todo'
+
+            # write changes
+            with open(paths['main'], 'w') as file:
+                file.write(json.dumps(todos))
+
+            print(colored('\n' + name, 'green', attrs=attrs), colored('linked successfully!', attrs=attrs))
 
         # local
         elif option == 'local':
@@ -217,6 +278,14 @@ def main():
                         with open(paths['config'], 'w') as file:
                             file.write(json.dumps(config))
 
+        elif option in get(paths['main'])['links']:
+            if len(argv) == 2:
+                # get
+                pass
+            else:
+                # add and remove
+                pass
+            pass
 
         else:
             print(f'Illegal option "{sys.argv[1]}".')
@@ -244,9 +313,10 @@ def get(path):
     else:
         # check if file exists
         if not os.path.isfile(path):
-            with open(path, 'w') as file:
-                file.write(json.dumps([]))
-            return []
+            print('\nMain file not found.')
+            print('\nCreate it with: todo init')
+            exit(3)
+
 
         # read file
         with open(path, 'r') as file:
