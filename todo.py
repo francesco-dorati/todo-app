@@ -24,11 +24,11 @@ from termcolor import colored
     - add highlight
 """
 
-base_path = "/".join(os.path.realpath(__file__).split('/')[:-1])
-file_path = base_path + '/todos.json'
+base_path = '/'.join(os.path.realpath(__file__).split('/')[:-1]) + '/'
+file_path = base_path + 'todos.json'
 
 # load config
-with open(base_path + '/config.json') as file:
+with open(base_path + 'config.json') as file:
     config = json.load(file)
 
 def main():
@@ -136,8 +136,75 @@ def main():
                     else:
                         print(colored(f'   [{index + 1 if index < todos["removed"] else index}] {todo}', todos_color, attrs=attrs))
 
+        # local
+        elif option == 'local':
+            if len(sys.argv) == 2:
+                # get
+                # change base path
+                file_path = 'todos.json'
+                todos = get()
+
+                # print
+                if len(todos) > 0:
+                    print(colored('Local TODOs:', attrs=attrs))
+                    for index, todo in enumerate(todos):
+                        print(colored(f'   [{index + 1}] {todo}', todos_color, attrs=attrs))
+                else:
+                    print(colored('Local TODO list is empty.', 'grey', attrs=attrs))
+
+            # if 4 arguments given
+            elif len(sys.argv) == 4:
+                local_option = sys.argv[2]
+
+                # add
+                if local_option == 'add':
+                    file_path = 'todos.json'
+                    todos = add(sys.argv[3])
+
+                    # print
+                    print(colored('Locally added', attrs=attrs), 
+                            colored(f'"{todos["todos"][todos["added"] - 1]}"', 'green', attrs=attrs), 
+                            colored('successfully!', attrs=attrs))
+                    print(colored('\nLocal TODOs:', attrs=attrs))
+                    for index, todo in enumerate(todos['todos']):
+                        if index == todos['added'] - 1:
+                            print(colored(f'   [+] {todo}', 'green', attrs=attrs))
+                        else:
+                            print(colored(f'   [{index + 1}] {todo}', todos_color, attrs=attrs))
+
+                # remove
+                elif local_option == 'remove':
+                    file_path = 'todos.json'
+                    todos = remove(sys.argv[3])
+
+                    # if removed all
+                    if todos['removed'] == 'all':
+                        print(colored('Locally removed', attrs=attrs), 
+                                colored('all', 'red', attrs=attrs), 
+                                colored('successfully!', attrs=attrs))
+                        print(colored('\nLocal TODOs:', attrs=attrs))
+
+                        # print all removed todos
+                        for todo in todos['todos']:
+                            print(colored(f'   [-] {todo}', 'red', attrs=attrs))
+
+                    # if removed one
+                    else:
+                        print(colored('Locally removed', attrs=attrs), 
+                                colored(f'"{todos["todos"][todos["removed"] - 1]}"', 'red', attrs=attrs), 
+                                colored('successfully!', attrs=attrs))
+                        print(colored('\nLocal TODOs:', attrs=attrs))
+
+                        # print all todos
+                        for index, todo in enumerate(todos["todos"]):
+                            if index == todos['removed']:
+                                print(colored(f'   [-] {todo}', 'red', attrs=attrs))
+                            else:
+                                print(colored(f'   [{index + 1 if index < todos["removed"] else index}] {todo}', todos_color, attrs=attrs))
+
+
         # settings
-        if option == 'settings':
+        elif option == 'settings':
             # if 2 arguments given
             if len(sys.argv) == 2:
                 print(colored('TODOs settings', attrs=attrs))
@@ -163,7 +230,7 @@ def main():
 
                         # write changes to file
                         config['mode'] = mode
-                        with open(base_path + '/config.json', 'w') as file:
+                        with open(base_path + 'config.json', 'w') as file:
                             file.write(json.dumps(config))
 
 
@@ -178,6 +245,7 @@ def main():
 
 # GET
 def get():
+    print(file_path)
     # check if file exists
     if not os.path.isfile(file_path):
         with open(file_path, 'w') as file:
