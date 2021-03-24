@@ -1,5 +1,5 @@
 {
    "mode": "remote",
    "remote": "http://localhost:5000/",
-   "local": "/usr/local/bin/"
+   "local": "/usr/local/bin"
 }
