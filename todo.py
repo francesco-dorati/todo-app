@@ -8,6 +8,10 @@ from termcolor import colored
 
 """
     TODO
+    - allow only one todofile
+    - store in local.todo
+    - use rename to rename file
+
     commands
         - todo rename
         - todo remove
