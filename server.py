@@ -11,22 +11,21 @@ app = Flask(__name__)
     TODOs:
 """
 
-file_name = 'todos.txt'
+file_name = 'main.json'
 
 @app.route('/', methods=['GET', 'POST', 'DELETE'])
 def todo():
     # GET
     if request.method == 'GET':
-        return jsonify(get())
+        return jsonify(get(file_name))
 
     # POST
     elif request.method == 'POST':
-        todo = request.form.get('add')
-        print(todo)
-        return jsonify(add(todo))
+        added = request.form.get('add')
+        return jsonify(add(file_name, added))
 
     # DELETE
     else:
-        arg = request.args.get('remove')
-        return jsonify(remove(arg))
+        removed = request.args.get('remove')
+        return jsonify(remove(file_name, removed))
 

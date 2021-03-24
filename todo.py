@@ -8,10 +8,7 @@ from termcolor import colored
 
 """
     TODO
-    - functions takse path as argument
-
     - an title to and other data to todofile 
-    - try calling file main.todos or local.todos
     - store todos in different files which are sections
     - maybe add a directory for todofiles
     - local is a reserved keyword which refers to loal file, add possibility to add common keywords which refer to files
@@ -34,19 +31,23 @@ from termcolor import colored
 """
 
 names = {
-    'todos': 'todos.json',
+    'main': 'main.todo',
+    'local': 'local.todo',
     'config': 'config.json'
 }
 
-paths = {
-    'base': '/'.join(os.path.realpath(__file__).split('/')[:-1]) + '/',
-    'todos': '/'.join(os.path.realpath(__file__).split('/')[:-1]) + '/' + names['todos'],
-    'config': '/'.join(os.path.realpath(__file__).split('/')[:-1]) + '/' + names['config'],
-}
+base = '/'.join(os.path.realpath(__file__).split('/')[:-1]) + '/'
 
 # load config
-with open(paths['config']) as file:
+with open(base + names['config']) as file:
     config = json.load(file)
+
+paths = {
+    'main': base + names['main'],
+    'local': names['local'],
+    'remote': config['remote'],
+    'config': base + names['config']
+}
 
 def main():
     todos_color = 'grey'
@@ -55,25 +56,12 @@ def main():
     # if user wrote only 1 argument
     if len(sys.argv) == 1:
         # get
-        # if local
-        if config['mode'] == 'local':
-            todos = get()
-
-        # if remote
-        else:
-            response = requests.get(config['remote'])
-
-            # check for status code
-            if response.status_code == 200:
-                todos = json.loads(response.text)
-            else:
-                print(response.text)
-                exit(2)
+        todos = get(paths[config['mode']])
 
         # print
         # todos present
         if len(todos) > 0:
-            print(colored('Your TODOs:', attrs=attrs))
+            print(colored('\nYour TODOs:', attrs=attrs))
             for index, todo in enumerate(todos):
                 print(colored(f'   [{index + 1}] {todo}', todos_color, attrs=attrs))
 
@@ -90,22 +78,10 @@ def main():
         # add
         if option == 'add':
             # if local
-            if config['mode'] == 'local':
-                todos = add(sys.argv[2])
-
-            # if remote
-            else:
-                response = requests.post(config['remote'], data={'add': sys.argv[2]})
-                    
-                # check for status code
-                if response.status_code == 200:
-                    todos = json.loads(response.text)
-                else:
-                    print(response.text)
-                    exit(2)
+            todos = add(paths[config['mode']], sys.argv[2])
         
             # print
-            print(colored('Added', attrs=attrs), 
+            print(colored('\nAdded', attrs=attrs), 
                     colored(f'"{todos["todos"][todos["added"] - 1]}"', 'green', attrs=attrs), 
                     colored('successfully!', attrs=attrs))
             print(colored('\nTODO:', attrs=attrs))
@@ -116,19 +92,8 @@ def main():
                     print(colored(f'   [{index + 1}] {todo}', todos_color, attrs=attrs))
         # remove
         elif option == 'remove':
-            # if local
-            if config['mode'] == 'local':
-                todos = remove(sys.argv[2])
+            todos = remove(paths[config['mode']], sys.argv[2])
 
-            # if remote
-            else: 
-                response = requests.delete(config['remote'], params={'remove': sys.argv[2]})
-
-                if response.status_code == 200:
-                    todos = json.loads(response.text)
-                else:
-                    print(response.text)
-                    exit(2)
 
             # if removed all
             if todos['removed'] == 'all':
@@ -143,7 +108,7 @@ def main():
 
             # if removed one
             else:
-                print(colored('Removed', attrs=attrs), 
+                print(colored('\nRemoved', attrs=attrs), 
                         colored(f'"{todos["todos"][todos["removed"] - 1]}"', 'red', attrs=attrs), 
                         colored('successfully!', attrs=attrs))
                 print(colored('\nTODO:', attrs=attrs))
@@ -160,15 +125,17 @@ def main():
             if len(sys.argv) == 2:
                 # get
                 # change base path
-                todos = get(names['todos'])
+                todos = get(paths['local'])
 
                 # print
                 if len(todos) > 0:
-                    print(colored('Local TODOs:', attrs=attrs))
+                    print(colored('\nYour Local TODOs:', attrs=attrs))
                     for index, todo in enumerate(todos):
                         print(colored(f'   [{index + 1}] {todo}', todos_color, attrs=attrs))
                 else:
-                    print(colored('Local TODO list is empty.', 'grey', attrs=attrs))
+                    print(colored('\nYour Local TODOs:', attrs=attrs))
+                    print(colored('    [?] This TODO list is empty', 'grey', attrs=attrs))
+                    print(colored('\nAdd one by running: todo local add <todo>', 'grey', attrs=attrs))
 
             # if 4 arguments given
             elif len(sys.argv) == 4:
@@ -176,13 +143,13 @@ def main():
 
                 # add
                 if local_option == 'add':
-                    todos = add(sys.argv[3], names['todos'])
+                    todos = add(paths['local'], sys.argv[3])
 
                     # print
-                    print(colored('Locally added', attrs=attrs), 
+                    print(colored('\nLocally added', attrs=attrs), 
                             colored(f'"{todos["todos"][todos["added"] - 1]}"', 'green', attrs=attrs), 
                             colored('successfully!', attrs=attrs))
-                    print(colored('\nLocal TODOs:', attrs=attrs))
+                    print(colored('\nYour Local TODOs:', attrs=attrs))
                     for index, todo in enumerate(todos['todos']):
                         if index == todos['added'] - 1:
                             print(colored(f'   [+] {todo}', 'green', attrs=attrs))
@@ -191,11 +158,11 @@ def main():
 
                 # remove
                 elif local_option == 'remove':
-                    todos = remove(sys.argv[3], names['todos'])
+                    todos = remove(paths['local'], sys.argv[3])
 
                     # if removed all
                     if todos['removed'] == 'all':
-                        print(colored('Locally removed', attrs=attrs), 
+                        print(colored('\nLocally removed', attrs=attrs), 
                                 colored('all', 'red', attrs=attrs), 
                                 colored('successfully!', attrs=attrs))
                         print(colored('\nLocal TODOs:', attrs=attrs))
@@ -206,7 +173,7 @@ def main():
 
                     # if removed one
                     else:
-                        print(colored('Locally removed', attrs=attrs), 
+                        print(colored('\nLocally removed', attrs=attrs), 
                                 colored(f'"{todos["todos"][todos["removed"] - 1]}"', 'red', attrs=attrs), 
                                 colored('successfully!', attrs=attrs))
                         print(colored('\nLocal TODOs:', attrs=attrs))
@@ -223,11 +190,12 @@ def main():
         elif option == 'settings':
             # if 2 arguments given
             if len(sys.argv) == 2:
-                print(colored('TODOs settings', attrs=attrs))
+                print(colored('\nTODOs settings', attrs=attrs))
                 print(colored('\nMode:', attrs=attrs))
-                print(colored('[1] Local', 'grey' if config['mode'] == 'remote' else None, attrs=attrs))
-                print(colored('[2] Remote', 'grey' if config['mode'] == 'local' else None, attrs=attrs))
-                print(colored('\nEdit with', 'grey', attrs=attrs), colored('todo settings mode <number>', attrs=attrs))
+                print(colored('[1] Main', 'grey' if config['mode'] == 'remote' else None, attrs=attrs))
+                print(colored('[2] Remote', 'grey' if config['mode'] == 'main' else None, attrs=attrs))
+                print(colored('\nEdit with: todo settings mode <number>', 'grey', attrs=attrs))
+
             # if 4 arguments given
             elif len(sys.argv) == 4:
                 if sys.argv[2] == 'mode':
@@ -236,13 +204,13 @@ def main():
                         print('Invalid mode.')
                         exit(1)
 
-                    mode = 'local' if sys.argv[3] == '1' else 'remote'
+                    mode = 'main' if sys.argv[3] == '1' else 'remote'
 
                     # check if mode is already set
                     if mode == config['mode']:
-                        print(colored('Mode already set to', attrs=attrs), colored(mode, 'red', attrs=attrs))
+                        print(colored('\nMode already set to', attrs=attrs), colored(mode, 'red', attrs=attrs))
                     else:
-                        print(colored('Mode set to', attrs=attrs), colored(mode, 'green', attrs=attrs))
+                        print(colored('\nMode set to', attrs=attrs), colored(mode, 'green', attrs=attrs))
 
                         # write changes to file
                         config['mode'] = mode
@@ -260,66 +228,93 @@ def main():
 
 
 # GET
-def get(path = None):
-    if not path:
-        path = paths['todos']
+def get(path):
+    # if remote
+    if "http://" in path or "https://" in path:
+        response = requests.get(path)
 
-    # check if file exists
-    if not os.path.isfile(path):
-        with open(path, 'w') as file:
-            file.write(json.dumps([]))
-        return []
+        # check for status code
+        if response.status_code == 200:
+            return json.loads(response.text)
+        else:
+            print(response.text)
+            exit(2)
 
-    # read file
-    with open(path, 'r') as file:
-        todos = json.loads(file.read())
+    # if local
+    else:
+        # check if file exists
+        if not os.path.isfile(path):
+            with open(path, 'w') as file:
+                file.write(json.dumps([]))
+            return []
 
-    return todos
+        # read file
+        with open(path, 'r') as file:
+            return json.loads(file.read())
 
 # ADD
-def add(added, path = None):
-    if not path:
-        path = paths['todos']
+def add(path, added):
+    # if remote
+    if "http://" in path or "https://" in path:
+        response = requests.post(path, data={'add': added})
+                    
+        # check for status code
+        if response.status_code == 200:
+            return json.loads(response.text)
+        else:
+            print(response.text)
+            exit(2)
 
-    # get and append new todo
-    todos = get(path)
-    todos.append(added)
+    # if local
+    else:
+        # get and append new todo
+        todos = get(path)
+        todos.append(added)
 
-    # write to file
-    with open(path, 'w') as file:
-        file.write(json.dumps(todos))
+        # write to file
+        with open(path, 'w') as file:
+            file.write(json.dumps(todos))
 
-    return {'todos': todos, 'added': len(todos)}
+        return {'todos': todos, 'added': len(todos)}
 
 
 # REMOVE
-def remove(removed, path = None):
-    if not path:
-        path = paths['todos']
+def remove(path, removed):
+    # if remote
+    if "http://" in path or "https://" in path:
+        response = requests.delete(config['remote'], params={'remove': sys.argv[2]})
 
-    todos = get(path)
+        if response.status_code == 200:
+            return json.loads(response.text)
+        else:
+            print(response.text)
+            exit(2)
 
-    # check index validity
-    if (not removed.isnumeric() and removed != 'all') or (removed.isnumeric() and int(removed) > len(todos)):
-        return "Invalid index", 404
- 
-    # delete all
-    if removed == 'all':
-        with open(path, 'w') as file:
-            file.write(json.dumps([]))
-
-        return {'todos': todos, 'removed': 'all'}
-
-    # delete one
+    # if local
     else:
-        index = int(removed) - 1
-        modified = [*todos]
-        modified.pop(index)
+        todos = get(path)
 
-        with open(path, 'w') as file:
-            file.write(json.dumps(modified))
+        # check index validity
+        if (not removed.isnumeric() and removed != 'all') or (removed.isnumeric() and int(removed) > len(todos)):
+            return "Invalid index", 404
+ 
+        # delete all
+        if removed == 'all':
+            with open(path, 'w') as file:
+                file.write(json.dumps([]))
 
-        return {'todos': todos, 'removed': index}
+            return {'todos': todos, 'removed': 'all'}
+
+        # delete one
+        else:
+            index = int(removed) - 1
+            modified = [*todos]
+            modified.pop(index)
+
+            with open(path, 'w') as file:
+                file.write(json.dumps(modified))
+
+            return {'todos': todos, 'removed': index}
             
 
 if __name__ == '__main__':

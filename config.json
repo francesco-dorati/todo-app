@@ -1,1 +1,1 @@
-{"mode": "local", "remote": "http://localhost:5000/", "local": "/usr/local/bin"}
+{"mode": "main", "remote": "http://localhost:5000/", "local": "/usr/local/bin"}
