@@ -5,9 +5,21 @@ import json
 import requests
 
 from termcolor import colored
+import colorama
+from colorama import Fore, Back, Style
+colorama.init(autoreset=True)
 
 """
     TODO
+    - functions takse path as argument
+
+    - an title to and other data to todofile 
+    - try calling file main.todos or local.todos
+    - store todos in different files which are sections
+    - maybe add a directory for todofiles
+    - local is a reserved keyword which refers to loal file, add possibility to add common keywords which refer to files
+    - link todos to mainfiles (maybe fetch data from local)
+    - add order
     - add git serve to activate server
 
     - "todo remove" print todos and prompts for dalete until -1 given 
@@ -43,7 +55,6 @@ def main():
     todos_color = 'grey'
     attrs = ['bold']
 
-    print()
     # if user wrote only 1 argument
     if len(sys.argv) == 1:
         # get
@@ -64,12 +75,21 @@ def main():
 
         # print
         if len(todos) > 0:
-            print(colored('TODO:', attrs=attrs))
-            for index, todo in enumerate(todos):
-                print(colored(f'   [{index + 1}] {todo}', todos_color, attrs=attrs))
+            nl = '\n'
+            print(colored(f"""
+Your TODOs:
+{Fore.GREY}{nl.join(f"    [{index + 1}] {todo}" for index, todo in enumerate(todos)), todos_color}
+    """, attrs=attrs))
+            #print(colored(f"""
+#Your TODOs:
+#{colored(nl.join(f"    [{index + 1}] {todo}" for index, todo in enumerate(todos)), todos_color)}
+#    """, attrs=attrs))
         else:
-            print(colored('TODO list is empty.', 'grey', attrs=attrs))
+            print(colored(f"""
+Your TODOs:
+{colored('[?] This TODO list is empty', 'grey')}
 
+{colored('Add one by running: todo add <todo>', 'grey', attrs=attrs)}""", attrs=attrs))
 
     # if user wrote 2 or more2 or more arguments
     elif len(sys.argv) >= 2:
@@ -84,7 +104,7 @@ def main():
             # if remote
             else:
                 response = requests.post(config['remote'], data={'add': sys.argv[2]})
-                
+                    
                 # check for status code
                 if response.status_code == 200:
                     todos = json.loads(response.text)
@@ -93,15 +113,12 @@ def main():
                     exit(2)
         
             # print
-            print(colored('Added', attrs=attrs), 
-                    colored(f'"{todos["todos"][todos["added"] - 1]}"', 'green', attrs=attrs), 
-                    colored('successfully!', attrs=attrs))
-            print(colored('\nTODO:', attrs=attrs))
-            for index, todo in enumerate(todos['todos']):
-                if index == todos['added'] - 1:
-                    print(colored(f'   [+] {todo}', 'green', attrs=attrs))
-                else:
-                    print(colored(f'   [{index + 1}] {todo}', todos_color, attrs=attrs))
+            nl = '\n'
+            print(colored(f"""
+Added {colored(todos["todos"][todos["added"] - 1], 'green')} successfully! 
+
+Your TODOs:
+{colored(nl.join(f"    [{index + 1}] {todo}" for index, todo in enumerate(todos["todos"])), todos_color, attrs=attrs)}""", attrs=attrs))
 
         # remove
         elif option == 'remove':
