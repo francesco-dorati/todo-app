@@ -5,9 +5,6 @@ import json
 import requests
 
 from termcolor import colored
-import colorama
-from colorama import Fore, Back, Style
-colorama.init(autoreset=True)
 
 """
     TODO
@@ -74,22 +71,17 @@ def main():
                 exit(2)
 
         # print
+        # todos present
         if len(todos) > 0:
-            nl = '\n'
-            print(colored(f"""
-Your TODOs:
-{Fore.GREY}{nl.join(f"    [{index + 1}] {todo}" for index, todo in enumerate(todos)), todos_color}
-    """, attrs=attrs))
-            #print(colored(f"""
-#Your TODOs:
-#{colored(nl.join(f"    [{index + 1}] {todo}" for index, todo in enumerate(todos)), todos_color)}
-#    """, attrs=attrs))
-        else:
-            print(colored(f"""
-Your TODOs:
-{colored('[?] This TODO list is empty', 'grey')}
+            print(colored('Your TODOs:', attrs=attrs))
+            for index, todo in enumerate(todos):
+                print(colored(f'   [{index + 1}] {todo}', todos_color, attrs=attrs))
 
-{colored('Add one by running: todo add <todo>', 'grey', attrs=attrs)}""", attrs=attrs))
+        # no todos
+        else:
+            print(colored('\nYour TODOs:', attrs=attrs))
+            print(colored('    [?] This TODO list is empty', 'grey', attrs=attrs))
+            print(colored('\nAdd one by running: todo add <todo>', 'grey', attrs=attrs))
 
     # if user wrote 2 or more2 or more arguments
     elif len(sys.argv) >= 2:
@@ -113,13 +105,15 @@ Your TODOs:
                     exit(2)
         
             # print
-            nl = '\n'
-            print(colored(f"""
-Added {colored(todos["todos"][todos["added"] - 1], 'green')} successfully! 
-
-Your TODOs:
-{colored(nl.join(f"    [{index + 1}] {todo}" for index, todo in enumerate(todos["todos"])), todos_color, attrs=attrs)}""", attrs=attrs))
-
+            print(colored('Added', attrs=attrs), 
+                    colored(f'"{todos["todos"][todos["added"] - 1]}"', 'green', attrs=attrs), 
+                    colored('successfully!', attrs=attrs))
+            print(colored('\nTODO:', attrs=attrs))
+            for index, todo in enumerate(todos['todos']):
+                if index == todos['added'] - 1:
+                    print(colored(f'   [+] {todo}', todos_color, attrs=attrs))
+                else:
+                    print(colored(f'   [{index + 1}] {todo}', todos_color, attrs=attrs))
         # remove
         elif option == 'remove':
             # if local
