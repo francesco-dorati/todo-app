@@ -8,11 +8,8 @@ from termcolor import colored
 
 """
     TODO
-    - add git serve to activate server
-    - add print function 
-    - add settings and make todos.json 
-    - settings user change main and local todo file
     - add local todos
+    - add git serve to activate server
 
     - todo remove multiple elements
 
@@ -41,7 +38,7 @@ def main():
     print()
     # if user wrote only 1 argument
     if len(sys.argv) == 1:
-        # GET
+        # get
         # if local
         if config['mode'] == 'local':
             todos = get()
@@ -65,11 +62,12 @@ def main():
         else:
             print(colored('TODO list is empty.', 'grey', attrs=attrs))
 
-    # if user wrote 3 arguments
-    elif len(sys.argv) >= 3:
+
+    # if user wrote 2 or more2 or more arguments
+    elif len(sys.argv) >= 2:
         option = sys.argv[1]
         
-        # ADD
+        # add
         if option == 'add':
             # if local
             if config['mode'] == 'local':
@@ -139,14 +137,43 @@ def main():
                         print(colored(f'   [{index + 1 if index < todos["removed"] else index}] {todo}', todos_color, attrs=attrs))
 
         # settings
-        elif option == 'settings':
-            pass
+        if option == 'settings':
+            # if 2 arguments given
+            if len(sys.argv) == 2:
+                print(colored('TODOs settings', attrs=attrs))
+                print(colored('\nMode:', attrs=attrs))
+                print(colored('[1] Local', 'grey' if config['mode'] == 'remote' else None, attrs=attrs))
+                print(colored('[2] Remote', 'grey' if config['mode'] == 'local' else None, attrs=attrs))
+                print(colored('\nEdit with', 'grey', attrs=attrs), colored('todo settings mode <number>', attrs=attrs))
+            # if 4 arguments given
+            elif len(sys.argv) == 4:
+                if sys.argv[2] == 'mode':
+                    # check invalid mode
+                    if sys.argv[3] != '1' and sys.argv[3] != '2':
+                        print('Invalid mode.')
+                        exit(1)
+
+                    mode = 'local' if sys.argv[3] == '1' else 'remote'
+
+                    # check if mode is already set
+                    if mode == config['mode']:
+                        print(colored('Mode already set to', attrs=attrs), colored(mode, 'red', attrs=attrs))
+                    else:
+                        print(colored('Mode set to', attrs=attrs), colored(mode, 'green', attrs=attrs))
+
+                        # write changes to file
+                        config['mode'] = mode
+                        with open(base_path + '/config.json', 'w') as file:
+                            file.write(json.dumps(config))
+
 
         else:
             print(f'Illegal option "{sys.argv[1]}".')
+            exit(1)
         
     else:
         print(f'Invalid number of arguments.')
+        exit(1)
 
 
 # GET
