@@ -8,6 +8,8 @@ from termcolor import colored, cprint
 
 """
     TODO
+    - todo local remove all print nothin
+    - local change color
     - create prints todolist
 
     - in get dont check for file
