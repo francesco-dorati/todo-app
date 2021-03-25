@@ -4,10 +4,13 @@ import os
 import json
 import requests
 
-from termcolor import colored
+from termcolor import colored, cprint
 
 """
     TODO
+    - create prints todolist
+
+    - in get dont check for file
     - allow only one todofile
     - store in local.todo
     - use rename to rename file
@@ -77,24 +80,14 @@ def main():
         todos = get(paths[config['mode']])
 
         # print
-        # todos present
-        if len(todos) > 0:
-            print(colored('\nYour TODOs:', attrs=attrs))
-            for index, todo in enumerate(todos):
-                print(colored(f'   [{index + 1}] {todo}', todos_color, attrs=attrs))
-
-        # no todos
-        else:
-            print(colored('\nYour TODOs:', attrs=attrs))
-            print(colored('    [?] This TODO list is empty', 'grey', attrs=attrs))
-            print(colored('\nAdd one by running: todo add <todo>', 'grey', attrs=attrs))
+        print_list('get', todos)
 
     # if user wrote 2 or more arguments
     elif len(sys.argv) >= 2:
         option = sys.argv[1]
         
-        # init
-        if option == 'init':
+        # create
+        if option == 'create':
             # check if file exists
             if os.path.isfile(paths['main']):
                 print(colored(f'\nFile {colored(paths["main"], "red")} already exists.', attrs=attrs)) 
@@ -103,153 +96,74 @@ def main():
             # create file
             with open(paths['main'], 'w') as file:
                 file.write(json.dumps({'name': 'main', 'todos': [], 'links': {}}))
-                print(colored(f'\nTODO list initialized successfully!', attrs=attrs)) 
+                print(colored(f'\nTODO list created successfully!', attrs=attrs)) 
         
         # add
         elif option == 'add':
             # if local
-            todos = add(paths[config['mode']], sys.argv[2])
+            todolist = add(paths[config['mode']], sys.argv[2])
         
             # print
-            print(colored('\nAdded', attrs=attrs), 
-                    colored(f'"{todos["todos"][todos["added"] - 1]}"', 'green', attrs=attrs), 
-                    colored('successfully!', attrs=attrs))
-            print(colored('\nTODO:', attrs=attrs))
-            for index, todo in enumerate(todos['todos']):
-                if index == todos['added'] - 1:
-                    print(colored(f'   [+] {todo}', todos_color, attrs=attrs))
-                else:
-                    print(colored(f'   [{index + 1}] {todo}', todos_color, attrs=attrs))
+            print_list('add', todolist)
+
         # remove
         elif option == 'remove':
-            todos = remove(paths[config['mode']], sys.argv[2])
-
-
-            # if removed all
-            if todos['removed'] == 'all':
-                print(colored('Removed', attrs=attrs), 
-                        colored('all', 'red', attrs=attrs), 
-                        colored('successfully!', attrs=attrs))
-                print(colored('\nTODO:', attrs=attrs))
-
-                # print all removed todos
-                for todo in todos['todos']:
-                    print(colored(f'   [-] {todo}', 'red', attrs=attrs))
-
-            # if removed one
-            else:
-                print(colored('\nRemoved', attrs=attrs), 
-                        colored(f'"{todos["todos"][todos["removed"] - 1]}"', 'red', attrs=attrs), 
-                        colored('successfully!', attrs=attrs))
-                print(colored('\nTODO:', attrs=attrs))
-
-                # print all todos
-                for index, todo in enumerate(todos["todos"]):
-                    if index == todos['removed']:
-                        print(colored(f'   [-] {todo}', 'red', attrs=attrs))
-                    else:
-                        print(colored(f'   [{index + 1 if index < todos["removed"] else index}] {todo}', todos_color, attrs=attrs))
-
-        # create
-        elif option == 'create':
-            # get name
-            name = os.path.basename(os.getcwd()) if len(sys.argv) == 2 else sys.argv[2]
-
-            # check if file exists
-            if os.path.isfile(name + '.todo'):
-                print(colored(f'\nFile {colored(name, "red")} already exists.', attrs=attrs)) 
-                exit(3)
-                
-            # create file
-            with open(name + '.todo', 'w') as file:
-                file.write(json.dumps({'name': name, 'todos': []}))
-
+            todolist = remove(paths[config['mode']], sys.argv[2])
+            
             # print
-            print(colored(f'\nLocal TODO list', attrs=attrs), 
-                    colored(name, "green", attrs=attrs),
-                    colored('successfully created!', attrs=attrs))
-
-
-        # link
-        elif option == 'link':
-            # get name
-            name = os.path.basename(os.getcwd()) if len(sys.argv) == 2 else sys.argv[2]
-
-            # get todos and add link
-            todos = get(paths['main'])
-            todos['links'][name] = os.getcwd() + '/' + name + '.todo'
-
-            # write changes
-            with open(paths['main'], 'w') as file:
-                file.write(json.dumps(todos))
-
-            print(colored('\n' + name, 'green', attrs=attrs), colored('linked successfully!', attrs=attrs))
+            print_list('remove', todolist)
 
         # local
         elif option == 'local':
+            # if 2 arguments given
             if len(sys.argv) == 2:
                 # get
-                # change base path
-                todos = get(paths['local'])
+                # check if file exists
+                if not os.path.isfile(paths['local']):
+                    print(colored(f'\nNo local TODO found.', attrs=attrs)) 
+                    print(colored(f'\nCreate one by running: todo local create <name>', 'grey', attrs=attrs)) 
+                    exit(3)
+
+                todolist = get(paths['local'])
 
                 # print
-                if len(todos) > 0:
-                    print(colored('\nYour Local TODOs:', attrs=attrs))
-                    for index, todo in enumerate(todos):
-                        print(colored(f'   [{index + 1}] {todo}', todos_color, attrs=attrs))
-                else:
-                    print(colored('\nYour Local TODOs:', attrs=attrs))
-                    print(colored('    [?] This TODO list is empty', 'grey', attrs=attrs))
-                    print(colored('\nAdd one by running: todo local add <todo>', 'grey', attrs=attrs))
+                print_list('get', todolist)
 
-            # if 4 arguments given
-            elif len(sys.argv) == 4:
+            # if more than two arguments given
+            elif len(sys.argv) > 2:
                 local_option = sys.argv[2]
+                
+                # create
+                if local_option == 'create':
+                    # get name
+                    name = os.path.basename(os.getcwd()) if len(sys.argv) == 3 else sys.argv[3]
 
-                # add
-                if local_option == 'add':
-                    todos = add(paths['local'], sys.argv[3])
+                    # check if file exists
+                    if os.path.isfile(paths['local']):
+                        print(colored(f'\nLocal TODO already exists.', attrs=attrs))
+                        exit(3)
+
+                    # create file
+                    with open(paths['local'], 'w') as file:
+                        file.write(json.dumps({'name': name, 'todos': []}))
 
                     # print
-                    print(colored('\nLocally added', attrs=attrs), 
-                            colored(f'"{todos["todos"][todos["added"] - 1]}"', 'green', attrs=attrs), 
-                            colored('successfully!', attrs=attrs))
-                    print(colored('\nYour Local TODOs:', attrs=attrs))
-                    for index, todo in enumerate(todos['todos']):
-                        if index == todos['added'] - 1:
-                            print(colored(f'   [+] {todo}', 'green', attrs=attrs))
-                        else:
-                            print(colored(f'   [{index + 1}] {todo}', todos_color, attrs=attrs))
+                    print(colored(f'\nLocal TODO list', attrs=attrs), 
+                            colored(name, "green", attrs=attrs),
+                            colored('successfully created!', attrs=attrs))    
+
+                # add
+                elif local_option == 'add':
+                    todolist = add(paths['local'], sys.argv[3])
+
+                    # print
+                    print_list('add', todolist)
 
                 # remove
                 elif local_option == 'remove':
-                    todos = remove(paths['local'], sys.argv[3])
+                    todolist = remove(paths['local'], sys.argv[3])
 
-                    # if removed all
-                    if todos['removed'] == 'all':
-                        print(colored('\nLocally removed', attrs=attrs), 
-                                colored('all', 'red', attrs=attrs), 
-                                colored('successfully!', attrs=attrs))
-                        print(colored('\nLocal TODOs:', attrs=attrs))
-
-                        # print all removed todos
-                        for todo in todos['todos']:
-                            print(colored(f'   [-] {todo}', 'red', attrs=attrs))
-
-                    # if removed one
-                    else:
-                        print(colored('\nLocally removed', attrs=attrs), 
-                                colored(f'"{todos["todos"][todos["removed"] - 1]}"', 'red', attrs=attrs), 
-                                colored('successfully!', attrs=attrs))
-                        print(colored('\nLocal TODOs:', attrs=attrs))
-
-                        # print all todos
-                        for index, todo in enumerate(todos["todos"]):
-                            if index == todos['removed']:
-                                print(colored(f'   [-] {todo}', 'red', attrs=attrs))
-                            else:
-                                print(colored(f'   [{index + 1 if index < todos["removed"] else index}] {todo}', todos_color, attrs=attrs))
-
+                    print_list('removed', todolist)
 
         # settings
         elif option == 'settings':
@@ -315,13 +229,6 @@ def get(path):
 
     # if local
     else:
-        # check if file exists
-        if not os.path.isfile(path):
-            print('\nMain file not found.')
-            print('\nCreate it with: todo init')
-            exit(3)
-
-
         # read file
         with open(path, 'r') as file:
             return json.loads(file.read())
@@ -343,13 +250,20 @@ def add(path, added):
     else:
         # get and append new todo
         todos = get(path)
-        todos.append(added)
+        todos['todos'].append(added)
 
         # write to file
         with open(path, 'w') as file:
             file.write(json.dumps(todos))
 
-        return {'todos': todos, 'added': len(todos)}
+        return {
+            'name': todos['name'],
+            'todos': todos['todos'],
+            'added': {
+                'index': len(todos['todos']) - 1, 
+                'text': added
+            }
+        }
 
 
 # REMOVE
@@ -366,30 +280,105 @@ def remove(path, removed):
 
     # if local
     else:
-        todos = get(path)
+        todolist = get(path)
+        todolist['removed'] = []
 
         # check index validity
-        if (not removed.isnumeric() and removed != 'all') or (removed.isnumeric() and int(removed) > len(todos)):
+        if (not removed.isnumeric() and removed != 'all') or (removed.isnumeric() and int(removed) > len(todolist['todos'])):
             return "Invalid index", 404
  
         # delete all
         if removed == 'all':
-            with open(path, 'w') as file:
-                file.write(json.dumps([]))
-
-            return {'todos': todos, 'removed': 'all'}
+            for index, todo in enumerate(todolist['todos']):
+                todolist['removed'].append({'index': index, 'text': todo})
+            todolist['todos'] = []
 
         # delete one
-        else:
+        elif removed.isnumeric():
             index = int(removed) - 1
-            modified = [*todos]
-            modified.pop(index)
+            todolist['removed'].append({'index': index, 'text': todolist['todos'].pop(int(index) - 1)})
 
-            with open(path, 'w') as file:
-                file.write(json.dumps(modified))
+        with open(path, 'w') as file:
+            file.write(json.dumps(todolist))
 
-            return {'todos': todos, 'removed': index}
+        return todolist
             
+
+def print_list(action, todolist):
+    print_bold = lambda x, y=None: cprint(x, y, attrs=['bold'], end='')
+
+    if todolist['name'] == 'remote':
+        name_color = 'blue'
+    elif todolist['name'] == 'main':
+        name_color = 'yellow'
+    else:
+        name_color = 'green'
+
+    # get add remove
+    if action in ['get', 'add', 'remove']:
+        if action == 'add':
+            print_bold('\nAdded '), 
+            print_bold(f'"{todolist["added"]["text"]}" ', 'green') 
+            print_bold('successfully to ')
+            print_bold(todolist['name'], name_color)
+            print_bold('!\n')
+        elif action == 'remove':
+            print_bold('\nRemoved '), 
+            if len(todolist['todos']) == 0 and len(todolist['removed']) != 1:
+                print_bold('all ', 'red') 
+            elif len(todolist['removed']) == 1:
+                print_bold(f'"{todolist["removed"][0]["text"]}" ', 'red') 
+            print_bold('successfully from ')
+            print_bold(todolist['name'], name_color)
+            print_bold('!\n')
+
+
+        print_bold('\nYour ')
+        print_bold(todolist['name'], name_color)
+        print_bold(' TODOs:\n')
+
+        # get
+        if action == 'get':
+            # todos present
+            if len(todolist['todos']) > 0:
+                for index, todo in enumerate(todolist['todos']):
+                    print_bold(f'   [{index + 1}] {todo}\n', 'grey')
+
+            # no todos
+            else:
+                print_bold('    [?] This TODO list is empty\n', 'grey')
+                print_bold('\nAdd one by running: todo add <todo>\n', 'grey')
+
+        # add
+        elif action == 'add':
+            for index, todo in enumerate(todolist['todos']):
+                if index == todolist['added']['index']:
+                    print_bold(f'    [+] {todo}\n', 'grey')
+                else:
+                    print_bold(f'    [{index + 1}] {todo}\n', 'grey')
+
+        # remove
+        elif action == 'remove':
+            for index, todo in enumerate(todolist['todos']):
+                if any(removed['index'] == index for removed in todolist['removed']):
+                    print_bold(f'   [-] {todolist["removed"][index]["text"]}\n', 'red')
+
+                print_bold(f'   [{index + 1}] {todo}\n', 'grey')
+
+            if any(removed['index'] == len(todolist['todos']) for removed in todolist['removed']):
+                print_bold(f'   [-] {todolist["removed"][len(todolist["todos"])]["text"]}\n', 'red')
+
+            
+
+    elif action == 'settings':
+        print_bold('\nTODOs settings\n')
+        print_bold('\nDefaults:\n')
+        print_bold('[1] Main', 'grey' if config['mode'] == 'remote' else None)
+        print_bold('[2] Remote', 'grey' if config['mode'] == 'main' else None)
+        print_bold('\nEdit with: todo settings mode <number>', 'grey')
+
+    # nel remoed dai il vecchio index e nella todo ritorna quella attuale, inseriscine dui in un loop 
+    # all ritorna tutti gli elementi
 
 if __name__ == '__main__':
     main()
