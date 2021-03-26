@@ -11,30 +11,13 @@ from termcolor import colored, cprint
     commands
         - todo rename
         - todo remove
+            - "todo remove" print todos and prompts for dalete until -1 given 
+            - "todo remove" multiple elements
+        - todo serve
+        - todo branch
+        - todo all
 
-    - todo welcome
-    - main file is linked to other local.todo stored in links
-    - an title to and other data to todofile 
-    - store todos in different files which are sections
-    - local is a reserved keyword which refers to loal file, add possibility to add common keywords which refer to files
-    - link todos to mainfiles (maybe fetch data from local)
-
-    - todo branch
-    
-    - add order
-    - add git serve to activate server
-
-    - "todo remove" print todos and prompts for dalete until -1 given 
-    - "todo remove" multiple elements
-
-    - add other functionality shown in "todo all"
-    - idea sector "todo add idea"
-
-    - remove color on created
-    
     - fix readme
-    - add branches
-    - add highlight
 """
 
 names = {
