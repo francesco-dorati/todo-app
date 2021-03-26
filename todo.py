@@ -100,7 +100,7 @@ def main():
                 
                 # create
                 if local_option == 'create':
-                    name = sys.argv[3] if len(sys.arv) == 4 else None
+                    name = sys.argv[3] if len(sys.argv) == 4 else None
                     todolist = create(paths['local'], name)
 
                 # add
@@ -152,6 +152,7 @@ def main():
 def create(path, name=None):
     # check if file exists
     if os.path.isfile(path):
+        return {'error': 1, 'message': 'file already exists.', 'path': path}
         """main TODO already exists in <path red>"""
         """local TODO already exists as <name red>"""
         exit(3)
@@ -286,6 +287,9 @@ def remove(path, removed):
 
 def print_list(action, todolist=None):
     print_bold = lambda x, y=None: cprint(x, y, attrs=['bold'], end='')
+    remote_color = 'blue'
+    main_color = 'yellow'
+    local_color = 'magenta'
 
 
     # if no error
@@ -294,11 +298,11 @@ def print_list(action, todolist=None):
         if action in ['get', 'add', 'remove', 'create']:
             # name color
             if todolist['name'] == 'remote':
-                name_color = 'blue'
+                name_color = remote_color 
             elif todolist['name'] == 'main':
-                name_color = 'yellow'
+                name_color = main_color 
             else:
-                name_color = 'magenta'
+                name_color = local_color 
 
             # feedback
             if action == 'add':
@@ -383,15 +387,29 @@ def print_list(action, todolist=None):
             if todolist['error'] == 1:
                 if todolist['path'] == paths['local']:
                     print_bold('No ')
-                    print_bold('local', 'magenta')
+                    print_bold('local', local_color)
                     print_bold(' TODO list found.\n')
                     print_bold('\nCreate one by running: todo local create [<name>]\n', 'grey')
                 else:
                     print_bold('No ')
-                    print_bold('main', 'yellow')
+                    print_bold('main', main_color)
                     print_bold(' TODO list found.\n')
                     print_bold('\nCreate by running: todo create\n', 'grey')
 
+        elif action == 'create':
+            if todolist['error'] == 1:
+                if todolist['path'] == paths['local']:
+                    name = get(paths['local'])['name']
+                    print_bold('local', local_color)
+                    print_bold(' TODO list already exists as ')
+                    print_bold(name, local_color)
+                    print_bold('\n')
+                else:
+                    print_bold('main', main_color)
+                    print_bold(' TODO list already exists in ')
+                    print_bold(todolist['path'], main_color)
+                    print_bold('\n')
+                    
         # exit
         exit(todolist['error'])
 
