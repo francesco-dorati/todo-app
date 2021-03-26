@@ -93,7 +93,7 @@ $ _
 ### Remove a TODO: `todo local remove <index>`
 
 ## Remote
-Usually, using **many devices** it's difficult to **synchronize** todo lists.
+Usually, using **many devices** it's difficult to **synchronize** todo lists.  
 If you have a **raspberry pi** or any other form of server at home, you can **host your todo list** on the home server.
 
 ### In the Server
