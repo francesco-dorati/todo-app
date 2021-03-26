@@ -124,21 +124,30 @@ def main():
                 if sys.argv[2] == 'mode':
                     # check invalid mode
                     if sys.argv[3] != '1' and sys.argv[3] != '2':
-                        print('Invalid mode.')
-                        exit(1)
+                        print_list('settings', {
+                            'error': 1,
+                            'message': 'Inalid mode.',
+                        })
 
                     mode = 'main' if sys.argv[3] == '1' else 'remote'
 
                     # check if mode is already set
                     if mode == config['mode']:
-                        print(colored('\nMode already set to', attrs=attrs), colored(mode, 'red', attrs=attrs))
-                    else:
-                        print(colored('\nMode set to', attrs=attrs), colored(mode, 'green', attrs=attrs))
+                        print_list('settings', {
+                            'error': 2,
+                            'message': 'Mode already set.',
+                            'mode': mode
+                        })
 
+                    else:
                         # write changes to file
                         config['mode'] = mode
                         with open(paths['config'], 'w') as file:
                             file.write(json.dumps(config))
+
+                        print_list('settings', {
+                            'mode': mode
+                        })
 
         else:
             print(f'Illegal option "{sys.argv[1]}".')
@@ -153,9 +162,6 @@ def create(path, name=None):
     # check if file exists
     if os.path.isfile(path):
         return {'error': 1, 'message': 'file already exists.', 'path': path}
-        """main TODO already exists in <path red>"""
-        """local TODO already exists as <name red>"""
-        exit(3)
             
     # create todolist
     if path == paths['local']:
@@ -285,12 +291,11 @@ def remove(path, removed):
         }
             
 
-def print_list(action, todolist=None):
+def print_list(action, todolist={}):
     print_bold = lambda x, y=None: cprint(x, y, attrs=['bold'], end='')
     remote_color = 'blue'
     main_color = 'yellow'
     local_color = 'magenta'
-
 
     # if no error
     if not 'error' in todolist:
@@ -373,11 +378,17 @@ def print_list(action, todolist=None):
     
         # settings
         elif action == 'settings':
+            if todolist:
+                print_bold('\nMode set to ')
+                print_bold(todolist['mode'], 'green')
+                print_bold('\n')
+
             print_bold('\nTODOs settings\n')
-            print_bold('\nDefaults:\n')
+            print_bold('\nMode:\n')
             print_bold('[1] Main\n', 'grey' if config['mode'] == 'remote' else None)
             print_bold('[2] Remote\n', 'grey' if config['mode'] == 'main' else None)
             print_bold('\nEdit with: todo settings mode <number>\n', 'grey')
+                
 
     # if error
     else:
@@ -403,12 +414,21 @@ def print_list(action, todolist=None):
                     print_bold('local', local_color)
                     print_bold(' TODO list already exists as ')
                     print_bold(name, local_color)
-                    print_bold('\n')
+                    print_bold('.\n')
                 else:
                     print_bold('main', main_color)
                     print_bold(' TODO list already exists in ')
                     print_bold(todolist['path'], main_color)
-                    print_bold('\n')
+                    print_bold('.\n')
+
+        elif action == 'settings':
+            if todolist['error'] == 1:
+                print_bold('Wrong index.\n')
+
+            elif todolist['error'] == 2:
+                print_bold('Mode already set to ')                    
+                print_bold(todolist['mode'], 'red')
+                print_bold('.\n')
                     
         # exit
         exit(todolist['error'])
