@@ -8,6 +8,12 @@ from termcolor import colored, cprint
 
 """
     TODO
+    - remote compernde solo il main
+    - pero ideas lo voglio nel server
+    - controlla prima in locale e poi nel server
+    
+    - aggiungere possibilita si annullare il remove con undo (per tempo)
+
     commands
         - todo rename
         - todo remove
@@ -46,8 +52,8 @@ def main():
     # if user wrote only 1 argument
     if len(sys.argv) == 1:
         # get
-        todos = get(paths[config['mode']])
-        print_list('get', todos)
+        todolist = get(paths[config['mode']])
+        print_list('get', todolist)
 
     # if user wrote 2 or more arguments
     elif len(sys.argv) >= 2:
@@ -69,32 +75,30 @@ def main():
             todolist = remove(paths[config['mode']], sys.argv[2])
             print_list('remove', todolist)
 
-        # local
-        elif option == 'local':
-            # if 2 arguments given
+        # modes
+        elif option in ['main', 'remote', 'local']:
+            # get
             if len(sys.argv) == 2:
-                # get
-                todolist = get(paths['local'])
+                todolist = get(paths[option])
                 print_list('get', todolist)
 
-            # if more than two arguments given
-            elif len(sys.argv) > 2:
+            else:
                 local_option = sys.argv[2]
-                
+
                 # create
                 if local_option == 'create':
-                    name = sys.argv[3] if len(sys.argv) == 4 else None
-                    todolist = create(paths['local'], name)
+                    todolist = create(paths[option])
 
                 # add
                 elif local_option == 'add':
-                    todolist = add(paths['local'], sys.argv[3])
+                    todolist = add(paths[option], sys.argv[3])
 
                 # remove
                 elif local_option == 'remove':
-                    todolist = remove(paths['local'], sys.argv[3])
+                    todolist = remove(paths[option], sys.argv[3])
 
                 print_list(local_option, todolist)
+
 
         # settings
         elif option == 'settings':
@@ -142,6 +146,9 @@ def main():
 
 # create
 def create(path, name=None):
+    if "http://" in path or "https://" in path:
+        exit(1)
+
     # check if file exists
     if os.path.isfile(path):
         return {'error': 1, 'message': 'file already exists.', 'path': path}
@@ -152,6 +159,15 @@ def create(path, name=None):
             'name': name if name else os.path.basename(os.getcwd()),
             'todos': []
         }
+
+        # add to links
+        with open(paths['main'], 'r') as file:
+            main = json.loads(file.read())
+            main['links'][todolist['name']] = os.getcwd() + '/' + paths['local']
+
+        with open(paths['main'], 'w') as file:
+            file.write(json.dumps(main))
+
     else:
         todolist = {
             'name': 'main',
@@ -249,8 +265,8 @@ def remove(path, removed):
 
         # check index validity
         if ((not removed.isnumeric() and removed != 'all') or
-            (removed.isnumeric() and int(removed) > len(todolist['todos']))):
-            return "Invalid index", 404
+            (removed.isnumeric() and (int(removed) > len(todolist['todos']) or int(removed) <= 0))):
+            return {'error': 2, 'message': 'invalid index.', 'path': path} 
  
         # delete all
         if removed == 'all':
@@ -261,7 +277,7 @@ def remove(path, removed):
         # delete one
         elif removed.isnumeric():
             index = int(removed) - 1
-            removed_list.append({'index': index, 'text': todolist['todos'].pop(int(index) - 1)})
+            removed_list.append({'index': index, 'text': todolist['todos'].pop(index)})
 
         # write to file
         with open(path, 'w') as file:
@@ -370,7 +386,13 @@ def print_list(action, todolist={}):
             print_bold('\nMode:\n')
             print_bold('[1] Main\n', 'grey' if config['mode'] == 'remote' else None)
             print_bold('[2] Remote\n', 'grey' if config['mode'] == 'main' else None)
-            print_bold('\nEdit with: todo settings mode <number>\n', 'grey')
+            
+            if todolist:
+                print_bold('\nNow you can access ', 'grey')
+                print_bold(todolist['mode'], 'grey')
+                print_bold(' just by running: todo\n', 'grey')
+            else:
+                print_bold('\nEdit with: todo settings mode <number>\n', 'grey')
                 
 
     # if error
@@ -389,6 +411,8 @@ def print_list(action, todolist={}):
                     print_bold('main', main_color)
                     print_bold(' TODO list found.\n')
                     print_bold('\nCreate by running: todo create\n', 'grey')
+            if action == 'remove' and todolist['error'] == 2:
+                print_bold('Invalid index.\n')
 
         elif action == 'create':
             if todolist['error'] == 1:
@@ -415,7 +439,6 @@ def print_list(action, todolist={}):
                     
         # exit
         exit(todolist['error'])
-
 
     
 if __name__ == '__main__':
