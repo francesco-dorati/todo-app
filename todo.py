@@ -8,6 +8,8 @@ from termcolor import colored, cprint
 
 """
     TODO
+    - add local support
+
     - remote compernde solo il main
     - pero ideas lo voglio nel server
     - controlla prima in locale e poi nel server
@@ -45,6 +47,14 @@ paths = {
     'config': base + names['config']
 }
 
+# load links
+if os.path.isfile(paths['main']):
+    with open(paths['main'], 'r') as file:
+        links = json.load(file)['links']
+
+        for name in links:
+            paths[name] = links[name]
+
 def main():
     todos_color = 'grey'
     attrs = ['bold']
@@ -76,7 +86,7 @@ def main():
             print_list('remove', todolist)
 
         # modes
-        elif option in ['main', 'remote', 'local']:
+        elif option in paths:
             # get
             if len(sys.argv) == 2:
                 todolist = get(paths[option])
@@ -98,7 +108,6 @@ def main():
                     todolist = remove(paths[option], sys.argv[3])
 
                 print_list(local_option, todolist)
-
 
         # settings
         elif option == 'settings':
