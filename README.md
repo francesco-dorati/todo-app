@@ -14,7 +14,7 @@ sudo mv todo-app /usr/local/bin
 
 Add symbolic link (to allow: `$ todo` writing instead of `$ todo.py`):
 ```
-ln -s /usr/local/bin/todo /usr/local/bin/todo-app/todo.py
+ln -s /usr/local/bin/todo-app/todo.py /usr/local/bin/todo
 ```
 
 
