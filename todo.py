@@ -8,8 +8,6 @@ from termcolor import colored, cprint
 
 """
     TODO
-    - add local support
-
     - remote compernde solo il main
     - pero ideas lo voglio nel server
     - controlla prima in locale e poi nel server
@@ -62,7 +60,7 @@ def main():
     # if user wrote only 1 argument
     if len(sys.argv) == 1:
         # get
-        todolist = get(paths[config['mode']])
+        todolist = get(config['mode'])
         print_list('get', todolist)
 
     # if user wrote 2 or more arguments
@@ -71,25 +69,25 @@ def main():
         
         # create
         if option == 'create':
-            todolist = create(paths['main'])
+            todolist = create('main')
             print_list('create', todolist)
         
         # add
         elif option == 'add':
             # if local
-            todolist = add(paths[config['mode']], sys.argv[2])
+            todolist = add(config['mode'], sys.argv[2])
             print_list('add', todolist)
 
         # remove
         elif option == 'remove':
-            todolist = remove(paths[config['mode']], sys.argv[2])
+            todolist = remove(config['mode'], sys.argv[2])
             print_list('remove', todolist)
 
         # modes
         elif option in paths:
             # get
             if len(sys.argv) == 2:
-                todolist = get(paths[option])
+                todolist = get(option)
                 print_list('get', todolist)
 
             else:
@@ -97,15 +95,15 @@ def main():
 
                 # create
                 if local_option == 'create':
-                    todolist = create(paths[option])
+                    todolist = create(option)
 
                 # add
                 elif local_option == 'add':
-                    todolist = add(paths[option], sys.argv[3])
+                    todolist = add(option, sys.argv[3])
 
                 # remove
                 elif local_option == 'remove':
-                    todolist = remove(paths[option], sys.argv[3])
+                    todolist = remove(option, sys.argv[3])
 
                 print_list(local_option, todolist)
 
@@ -192,9 +190,11 @@ def create(path, name=None):
                     
 
 # GET
-def get(path):
+def get(mode):
+    path = paths[mode]
+    
     # if remote
-    if "http://" in path or "https://" in path:
+    if mode == 'remote':
         response = requests.get(path)
 
         # check for status code
@@ -214,9 +214,11 @@ def get(path):
             return json.loads(file.read())
 
 # ADD
-def add(path, added):
+def add(mode, added):
+    path = paths[mode]
+
     # if remote
-    if "http://" in path or "https://" in path:
+    if mode == 'remote':
         response = requests.post(path, data={'add': added})
                     
         # check for status code
@@ -233,7 +235,7 @@ def add(path, added):
             return {'error': 1, 'message': 'file not found', 'path': path} 
 
         # get and append new todo
-        todolist = get(path)
+        todolist = get(mode)
         todolist['todos'].append(added)
 
         # write to file
@@ -251,10 +253,12 @@ def add(path, added):
 
 
 # REMOVE
-def remove(path, removed):
+def remove(mode, removed):
+    path = paths[mode]
+
     # if remote
-    if "http://" in path or "https://" in path:
-        response = requests.delete(config['remote'], params={'remove': sys.argv[2]})
+    if mode == 'remote':
+        response = requests.delete(path, params={'remove': sys.argv[2]})
 
         if response.status_code == 200:
             return json.loads(response.text)
@@ -269,7 +273,7 @@ def remove(path, removed):
             return {'error': 1, 'message': 'file not found', 'path': path} 
 
         # get todos
-        todolist = get(path)
+        todolist = get(mode)
         removed_list = []
 
         # check index validity
