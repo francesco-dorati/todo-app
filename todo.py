@@ -8,6 +8,8 @@ from termcolor import colored, cprint
 
 """
     TODO
+    - load external links 
+        - if remote load also remote links
     - remote compernde solo il main
     - pero ideas lo voglio nel server
     - controlla prima in locale e poi nel server
