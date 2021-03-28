@@ -152,8 +152,10 @@ def main():
         exit(1)
 
 # create
-def create(path, name=None):
-    if "http://" in path or "https://" in path:
+def create(mode, name=None):
+    path = paths[mode]
+
+    if mode == 'remote':
         exit(1)
 
     # check if file exists
@@ -161,7 +163,7 @@ def create(path, name=None):
         return {'error': 1, 'message': 'file already exists.', 'path': path}
             
     # create todolist
-    if path == paths['local']:
+    if mode == 'local':
         todolist = {
             'name': name if name else os.path.basename(os.getcwd()),
             'todos': []
