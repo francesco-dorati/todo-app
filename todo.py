@@ -8,6 +8,8 @@ from termcolor import colored, cprint
 
 """
     TODO
+    - todo switch mode -> changes mode
+
     - load external links 
         - if remote load also remote links
     - remote compernde solo il main
