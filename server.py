@@ -28,3 +28,7 @@ def todo():
     else:
         removed = request.args.get('remove')
         return jsonify(remove('main', removed))
+
+@app.route('/<name>')
+def links(name):
+    return jsonify(get(name))
