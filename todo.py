@@ -8,13 +8,10 @@ from termcolor import colored, cprint
 
 """
     TODO
-    - load external links 
-        - if remote load also remote links
-    - remote compernde solo il main
-    - pero ideas lo voglio nel server
-    - controlla prima in locale e poi nel server
-
+    - implement server links
+    - errore se mode è remote e il server è spento
     - aggiungere help
+    - aggiungere local a mode
     
     - aggiungere possibilita si annullare il remove con undo (per tempo)
 
@@ -58,7 +55,7 @@ if os.path.isfile(paths['main']):
             paths[name] = links[name]
 
 # load remote links
-if config['mode'] == 'remote':
+try:
     response = requests.get(paths['remote'])
 
     # check for status code
@@ -68,12 +65,11 @@ if config['mode'] == 'remote':
     else:
         print(response.text)
         exit(2)
+except requests.exceptions.RequestException:
+    pass
 
 
 def main():
-    todos_color = 'grey'
-    attrs = ['bold']
-
     # if user wrote only 1 argument
     if len(sys.argv) == 1:
         # get
@@ -99,30 +95,10 @@ def main():
         elif option == 'remove':
             data = remove(config['mode'], sys.argv[2])
             print_list('remove', data)
-
-        # modes
-        elif option in paths:
-            # get
-            if len(sys.argv) == 2:
-                data = get(option)
-                print_list('get', data)
-
-            else:
-                local_option = sys.argv[2]
-
-                # create
-                if local_option == 'create':
-                    data = create(option)
-
-                # add
-                elif local_option == 'add':
-                    data = add(option, sys.argv[3])
-
-                # remove
-                elif local_option == 'remove':
-                    data = remove(option, sys.argv[3])
-
-                print_list(local_option, data)
+        
+        # all
+        elif option == 'all':
+            print_list('all', paths)
 
         # mode
         elif option == 'mode':
@@ -154,6 +130,30 @@ def main():
                     'error': 1,
                     'message': 'Inalid mode.',
                 })
+        
+        # paths
+        elif option in paths:
+            # get
+            if len(sys.argv) == 2:
+                data = get(option)
+                print_list('get', data)
+
+            else:
+                local_option = sys.argv[2]
+
+                # create
+                if local_option == 'create':
+                    data = create(option)
+
+                # add
+                elif local_option == 'add':
+                    data = add(option, sys.argv[3])
+
+                # remove
+                elif local_option == 'remove':
+                    data = remove(option, sys.argv[3])
+
+                print_list(local_option, data)
 
         else:
             print(f'Illegal option "{sys.argv[1]}".')
@@ -404,6 +404,34 @@ def print_list(action, data={}):
                     print_bold(f'\nAdd one by running: ', 'grey')
                     print_bold(
                         f'todo {"local " if not data["name"] == "main" else ""}add <todo>\n', 'grey')
+
+        # all
+        elif action == 'all':
+            # data = links
+            del data['config']
+            print_bold('\nYour lists:\n')
+            print_bold('main\n', mode_color['main']) if os.path.isfile(paths['main']) else None
+            #requests.get('http://localhost:5000')
+
+            try:
+                print_bold('remote\n', mode_color['remote']) if requests.get(paths['remote']) else None
+            except requests.exceptions.RequestException:
+                print_bold('remote\n', 'grey')
+
+            print_bold('local\n', mode_color['local']) if os.path.isfile(paths['local']) else None
+
+            del data['main']
+            del data['remote']
+            del data['local']
+            print_bold('\nYour links:\n')
+            for link in data:
+                if 'http://' in data[link] or 'https://' in data[link]:
+                    color = mode_color['remote']
+                else:
+                    color = mode_color['local']
+
+                print_bold(link + '\n', color)
+                #print_bold(link + ' ' + data[link] + '\n')
 
         # settings
         elif action == 'mode':
