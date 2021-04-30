@@ -408,22 +408,22 @@ def print_list(action, data={}):
         # all
         elif action == 'all':
             # data = links
-            del data['config']
-            print_bold('\nYour lists:\n')
-            print_bold('main\n', mode_color['main']) if os.path.isfile(paths['main']) else None
-            #requests.get('http://localhost:5000')
+            print_bold('\nAvailable lists:\n')
+            # main
+            print_bold(config['mode'] + '\n', mode_color[config['mode']]) if os.path.isfile(paths[config['mode']]) else None
 
+            # remote
             try:
                 print_bold('remote\n', mode_color['remote']) if requests.get(paths['remote']) else None
             except requests.exceptions.RequestException:
-                print_bold('remote\n', 'grey')
+                pass
 
-            print_bold('local\n', mode_color['local']) if os.path.isfile(paths['local']) else None
-
+            del data['config']
             del data['main']
             del data['remote']
             del data['local']
-            print_bold('\nYour links:\n')
+
+            # other links
             for link in data:
                 if 'http://' in data[link] or 'https://' in data[link]:
                     color = mode_color['remote']
@@ -431,7 +431,6 @@ def print_list(action, data={}):
                     color = mode_color['local']
 
                 print_bold(link + '\n', color)
-                #print_bold(link + ' ' + data[link] + '\n')
 
         # settings
         elif action == 'mode':
