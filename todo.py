@@ -4,12 +4,10 @@ import os
 import json
 import requests
 
-from termcolor import colored, cprint
+from termcolor import cprint
 
 """
     TODO
-    - implement server links
-    - errore se mode è remote e il server è spento
     - aggiungere help
     - aggiungere local a mode
     
@@ -210,7 +208,10 @@ def get(mode):
 
     # if remote
     if 'http://' in path or 'https://' in path:
-        response = requests.get(path)
+        try:
+            response = requests.get(path)
+        except requests.exceptions.RequestException:
+            return {'error': 1, 'message': 'server not found', 'path': path}
 
         # check for status code
         if response.status_code == 200:
@@ -458,7 +459,12 @@ def print_list(action, data={}):
         if action in ['get', 'add', 'remove']:
             # file not found
             if data['error'] == 1:
-                if data['path'] == paths['local']:
+                if 'http://' in data['path'] or 'https://' in data['path']:
+                    print_bold('No ')
+                    print_bold('remote', mode_color['remote'])
+                    print_bold(' TODO list found.\n')
+                    print_bold('\nCheck the URL in the config file.\n', 'grey')
+                elif data['path'] == paths['local']:
                     print_bold('No ')
                     print_bold('local', mode_color['local'])
                     print_bold(' TODO list found.\n')
