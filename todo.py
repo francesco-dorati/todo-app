@@ -13,6 +13,8 @@ from termcolor import colored, cprint
     - remote compernde solo il main
     - pero ideas lo voglio nel server
     - controlla prima in locale e poi nel server
+
+    - aggiungere help
     
     - aggiungere possibilita si annullare il remove con undo (per tempo)
 
@@ -54,6 +56,18 @@ if os.path.isfile(paths['main']):
 
         for name in links:
             paths[name] = links[name]
+
+# load remote links
+if config['mode'] == 'remote':
+    response = requests.get(paths['remote'])
+
+    # check for status code
+    if response.status_code == 200:
+        for name in json.loads(response.text)['links']:
+            paths[name] = paths['remote'] + name
+    else:
+        print(response.text)
+        exit(2)
 
 
 def main():
@@ -150,8 +164,6 @@ def main():
         exit(1)
 
 # create
-
-
 def create(mode, name=None):
     path = paths[mode]
 
@@ -197,7 +209,7 @@ def get(mode):
     path = paths[mode]
 
     # if remote
-    if mode == 'remote':
+    if 'http://' in path or 'https://' in path:
         response = requests.get(path)
 
         # check for status code
@@ -217,13 +229,11 @@ def get(mode):
             return json.loads(file.read())
 
 # ADD
-
-
 def add(mode, added):
     path = paths[mode]
 
     # if remote
-    if mode == 'remote':
+    if 'http://' in mode or 'https://' in mode:
         response = requests.post(path, data={'add': added})
 
         # check for status code
@@ -262,7 +272,7 @@ def remove(mode, removed):
     path = paths[mode]
 
     # if remote
-    if mode == 'remote':
+    if 'http://' in mode or 'https://' in mode:
         response = requests.delete(path, params={'remove': sys.argv[2]})
 
         if response.status_code == 200:
