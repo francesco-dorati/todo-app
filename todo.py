@@ -6,10 +6,12 @@ import requests
 
 from termcolor import cprint
 
+
+
 """
     TODO
-    - aggiungere help
-    - aggiungere local a mode
+    - aggiungere path a local todos
+    - rimuovere local todos
     
     - aggiungere possibilita si annullare il remove con undo (per tempo)
 
@@ -18,7 +20,6 @@ from termcolor import cprint
         - todo remove
             - "todo remove" print todos and prompts for dalete until -1 given 
             - "todo remove" multiple elements
-        - todo serve
         - todo branch
         - todo all
 
@@ -28,7 +29,8 @@ from termcolor import cprint
 names = {
     'main': 'main.todo',
     'local': 'local.todo',
-    'config': 'config.json'
+    'config': 'config.json',
+    'server': 'server.py'
 }
 
 base = '/'.join(os.path.realpath(__file__).split('/')[:-1]) + '/'
@@ -41,7 +43,8 @@ paths = {
     'main': base + names['main'],
     'local': names['local'],
     'remote': config['remote'],
-    'config': base + names['config']
+    'config': base + names['config'],
+    'server': base + names['server']
 }
 
 # load links
@@ -55,7 +58,6 @@ if os.path.isfile(paths['main']):
 # load remote links
 try:
     response = requests.get(paths['remote'])
-
     # check for status code
     if response.status_code == 200:
         for name in json.loads(response.text)['links']:
@@ -104,7 +106,7 @@ def main():
             if len(sys.argv) == 2:
                 print_list('mode')
 
-            elif sys.argv[2] in ['remote', 'main']:
+            elif sys.argv[2] in ['remote', 'main', 'local']:
                 mode = sys.argv[2]
                 # check if mode is already set
                 if mode == config['mode']:
@@ -128,6 +130,11 @@ def main():
                     'error': 1,
                     'message': 'Inalid mode.',
                 })
+        
+        # serve
+        elif option == 'serve':
+            from server import app
+            app.run(host='0.0.0.0', port='5000', debug=True)
         
         # help
         elif option == 'help':
@@ -427,6 +434,7 @@ def print_list(action, data={}):
             del data['main']
             del data['remote']
             del data['local']
+            del data['server']
 
             # other links
             for link in data:
@@ -449,6 +457,8 @@ def print_list(action, data={}):
             print_bold(' main\n', mode_color['main'])
             print_bold('[✓]', 'green') if config['mode'] == 'remote' else print_bold('[ ]')
             print_bold(' remote\n', mode_color['remote'])
+            print_bold('[✓]', 'green') if config['mode'] == 'local' else print_bold('[ ]')
+            print_bold(' local\n', mode_color['local'])
 
             if data:
                 print_bold('\nNow you can access ', 'grey')
