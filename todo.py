@@ -129,6 +129,10 @@ def main():
                     'message': 'Inalid mode.',
                 })
         
+        # help
+        elif option == 'help':
+            print_list('help')
+        
         # paths
         elif option in paths:
             # get
@@ -411,7 +415,7 @@ def print_list(action, data={}):
             # data = links
             print_bold('\nAvailable lists:\n')
             # main
-            print_bold(config['mode'] + '\n', mode_color[config['mode']]) if os.path.isfile(paths[config['mode']]) else None
+            print_bold('main\n', mode_color['main']) if os.path.isfile(paths['main']) else None
 
             # remote
             try:
@@ -452,6 +456,17 @@ def print_list(action, data={}):
                 print_bold(' just by running: todo\n', 'grey')
             else:
                 print_bold('\nEdit with: todo mode <mode>\n', 'grey')
+        
+        elif action == 'help':
+            color = 'grey'
+            print_bold('\nUsage: todo [options]\n', color)
+            print_bold('\nOptions:\n', color)
+            print_bold('  create                               -   creates a new main list\n', color)
+            print_bold('  add <todo>                           -   adds a new todo to the default list\n', color)
+            print_bold('  remove <index>                       -   removes a new todo to the default list\n', color)
+            print_bold('  all                                  -   prints all todolists\n', color)
+            print_bold('  local [create | add | remove]        -   work with local todolist\n', color)
+            print_bold('  <listname> [create | add | remove]   -   work with specific todolist\n', color)
 
     # if error
     else:
