@@ -12,6 +12,7 @@ from termcolor import cprint
     TODO
     - aggiungere path a local todos
     - rimuovere local todos
+    - fix error message (no main todolist found)
     
     - aggiungere possibilita si annullare il remove con undo (per tempo)
 
