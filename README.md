@@ -7,6 +7,11 @@ Clone repository:
 git clone https://github.com/francesco-dorati/todo-app.git
 ```
 
+Install dependencies:
+```
+pip3 install -r todo-app/requirements.txt
+```
+
 Move the app folder to `/usr/local/bin` (or any other folder in `$PATH`):
 ```
 sudo mv todo-app /usr/local/bin
@@ -14,7 +19,7 @@ sudo mv todo-app /usr/local/bin
 
 Add symbolic link (to allow: `$ todo` writing instead of `$ todo.py`):
 ```
-ln -s /usr/local/bin/todo-app/todo.py /usr/local/bin/todo
+sudo ln -s /usr/local/bin/todo-app/todo.py /usr/local/bin/todo
 ```
 
 
@@ -109,12 +114,13 @@ TODO
 ```
 #### Add a remote TODO: `todo remote add <todo>`
 #### Remove a remote TODO: `todo remote remove <index>`
-## Settings
-### Show settings: `todo settings`
+
+## Mode
+### Show mode: `todo mode`
 ```
 TODO
 ```
-### Change default mode: `todo settings mode <index>`
+### Change default mode: `todo mode <mode>`
 ```
 TODO
 
