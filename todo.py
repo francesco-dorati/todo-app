@@ -21,7 +21,6 @@ from termcolor import cprint
             - "todo remove" print todos and prompts for dalete until -1 given 
             - "todo remove" multiple elements
         - todo branch
-        - todo all
 
     - fix readme
 """
