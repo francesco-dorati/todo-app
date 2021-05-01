@@ -96,6 +96,7 @@ $ _
 ### Get all local TODOs: `todo local`
 ### Add a local TODO: `todo local add <todo>`
 ### Remove a TODO: `todo local remove <index>`
+### Access local TODO lists from an external directory: `todo <name>`
 
 ## Remote
 Usually, using **many devices** it's difficult to **synchronize** todo lists.  
