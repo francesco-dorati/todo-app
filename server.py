@@ -17,23 +17,23 @@ file_name = 'main.todo'
 def todo():
     # GET
     if request.method == 'GET':
-        data = jsonify(get('main'))
+        data = get('main')
         data['name'] = 'remote'
-        return data
+        return jsonify(data)
 
     # POST
     elif request.method == 'POST':
         added = request.form.get('add')
-        data = jsonify(add('main', added))
+        data = add('main', added)
         data['name'] = 'remote'
-        return data
+        return jsonify(data)
 
     # DELETE
     else:
         removed = request.args.get('remove')
-        data = jsonify(remove('main', removed))
+        data = remove('main', removed)
         data['name'] = 'remote'
-        return data
+        return jsonify(data)
 
 @app.route('/<name>')
 def links(name):
