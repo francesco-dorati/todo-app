@@ -10,6 +10,18 @@ from termcolor import cprint
 
 """
     TODO
+    - remote è segnato come main
+    - mettere sempre main ma in blu?
+
+    - todo all
+	your todos on main:
+		- 
+ 		- 
+		-
+	other available lists:
+		remote
+		local
+		name(italics)
     - aggiungere path a local todos
     - rimuovere local todos
     - fix error message (no main todolist found)
@@ -98,6 +110,7 @@ def main():
         
         # all
         elif option == 'all':
+            data = get(config['mode'])
             print_list('all', paths)
 
         # mode
@@ -333,6 +346,7 @@ def remove(mode, removed):
 
 def print_list(action, data={}):
     def print_bold(x, y=None): return cprint(x, y, attrs=['bold'], end='')
+    # def print_italics(x, y=None): return cprint(x, y, attrs=['bold', 'underline'], end='')
     mode_color = {
         'remote': 'blue',
         'main': 'yellow',
@@ -342,7 +356,7 @@ def print_list(action, data={}):
     # if no error
     if not 'error' in data:
         # get add remove
-        if action in ['get', 'add', 'remove', 'create']:
+        if action in ['get', 'add', 'remove', 'create', 'all']:
             # name color
             if data['name'] in mode_color:
                 name_color = mode_color[data['name']]
@@ -378,7 +392,8 @@ def print_list(action, data={}):
                     print_bold(' TODO list successfully created!\n')
 
             print_bold('\nYour ')
-            print_bold(data['name'], name_color)
+            print_bold('remote', 'blue')
+            #print_bold(data['name'], name_color)
             print_bold(' TODOs:\n')
 
             # add
@@ -403,7 +418,7 @@ def print_list(action, data={}):
                 for todo in data['removed']:
                     print_bold(f'   [-] {todo["text"]}\n', 'red')
 
-            # get
+            # get and all
             else:
                 # todos present
                 if len(data['todos']) > 0:
@@ -416,34 +431,61 @@ def print_list(action, data={}):
                     print_bold(f'\nAdd one by running: ', 'grey')
                     print_bold(
                         f'todo {"local " if not data["name"] == "main" else ""}add <todo>\n', 'grey')
+            
+            if action == 'all':
 
-        # all
-        elif action == 'all':
-            # data = links
-            print_bold('\nAvailable lists:\n')
-            # main
-            print_bold('main\n', mode_color['main']) if os.path.isfile(paths['main']) else None
+                print_bold('\nOther lists:\n')
 
-            # remote
-            try:
-                print_bold('remote\n', mode_color['remote']) if requests.get(paths['remote']) else None
-            except requests.exceptions.RequestException:
-                pass
+                # main
+                print_bold('main\n', mode_color['main']) if config['mode'] != 'main' and os.path.isfile(paths['main']) else None 
 
-            del data['config']
-            del data['main']
-            del data['remote']
-            del data['local']
-            del data['server']
+                # remote
+                try:
+                    print_bold('remote\n', mode_color['remote']) if config['mode'] != 'remote' and requests.get(paths['remote']) else None
+                except requests.exceptions.RequestException:
+                    pass 
 
-            # other links
-            for link in data:
-                if 'http://' in data[link] or 'https://' in data[link]:
-                    color = mode_color['remote']
-                else:
-                    color = mode_color['local']
+                # local 
+                print_bold('local\n', mode_color['local']) if config['mode'] != 'local' and os.path.isfile(paths['local']) else None
 
-                print_bold(link + '\n', color)
+                for list in data['links']:
+                    if 'http://' in data['links'][list] or 'https://' in data['links'][list]:
+                        color = mode_color['remote']
+                    else:
+                        color = mode_color['local']
+
+                    if not list in ['main', 'remote', 'local', 'config', 'server']:
+                        print_bold(list, color) 
+                        print_bold('\t(' + data['links'][list] + ')\n', 'grey')
+                    
+
+        # # all
+        # elif action == 'all':
+        #     # data = links
+        #     print_bold('\nAvailable lists:\n')
+        #     # main
+        #     print_bold('main\n', mode_color['main']) if os.path.isfile(paths['main']) else None
+
+        #     # remote
+        #     try:
+        #         print_bold('remote\n', mode_color['remote']) if requests.get(paths['remote']) else None
+        #     except requests.exceptions.RequestException:
+        #         pass
+
+        #     del data['config']
+        #     del data['main']
+        #     del data['remote']
+        #     del data['local']
+        #     del data['server']
+
+        #     # other links
+        #     for link in data:
+        #         if 'http://' in data[link] or 'https://' in data[link]:
+        #             color = mode_color['remote']
+        #         else:
+        #             color = mode_color['local']
+
+        #         print_bold(link + '\n', color)
 
         # settings
         elif action == 'mode':
