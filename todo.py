@@ -10,19 +10,9 @@ from termcolor import cprint
 
 """
     TODO
-    - remote è segnato come main
-    - mettere sempre main ma in blu?
-
+    - todo list stampa il nome del mode (local, main ecc)
     - todo all
-	your todos on main:
-		- 
- 		- 
-		-
-	other available lists:
-		remote
-		local
-		name(italics)
-    - aggiungere path a local todos
+    - fix todo all on remote 
     - rimuovere local todos
     - fix error message (no main todolist found)
     
@@ -111,7 +101,20 @@ def main():
         # all
         elif option == 'all':
             data = get(config['mode'])
-            print_list('all', paths)
+
+            try:
+                response = requests.get(paths['remote'])
+                # check for status code
+                if response.status_code == 200:
+                    for name in json.loads(response.text)['links']:
+                        data['links'][name] = paths['remote'] + name
+                else:
+                    print(response.text)
+                    exit(2)
+            except requests.exceptions.RequestException:
+                pass
+
+            print_list('all', data)
 
         # mode
         elif option == 'mode':
@@ -123,7 +126,7 @@ def main():
                 mode = sys.argv[2]
                 # check if mode is already set
                 if mode == config['mode']:
-                    print_list('mode', {
+                    print_error('mode', {
                         'error': 2,
                         'message': 'Mode already set.',
                         'mode': mode
@@ -139,7 +142,7 @@ def main():
                     })
 
             else:
-                print_list('settings', {
+                print_error('settings', {
                     'error': 1,
                     'message': 'Inalid mode.',
                 })
@@ -161,21 +164,21 @@ def main():
                 print_list('get', data)
 
             else:
-                local_option = sys.argv[2]
+                mode = sys.argv[2]
 
                 # create
-                if local_option == 'create':
+                if mode == 'create':
                     data = create(option)
 
                 # add
-                elif local_option == 'add':
+                elif mode == 'add':
                     data = add(option, sys.argv[3])
 
                 # remove
-                elif local_option == 'remove':
+                elif mode == 'remove':
                     data = remove(option, sys.argv[3])
 
-                print_list(local_option, data)
+                print_list(mode, data)
 
         else:
             print(f'Illegal option "{sys.argv[1]}".')
@@ -194,7 +197,7 @@ def create(mode, name=None):
 
     # check if file exists
     if os.path.isfile(path):
-        return {'error': 1, 'message': 'file already exists.', 'path': path}
+        print_error('create', {'error': 1, 'message': 'file already exists.', 'path': path})
 
     # create data
     if mode == 'local':
@@ -235,7 +238,7 @@ def get(mode):
         try:
             response = requests.get(path)
         except requests.exceptions.RequestException:
-            return {'error': 1, 'message': 'server not found', 'path': path}
+            print_error('get', {'error': 1, 'message': 'server not found', 'path': path})
 
         # check for status code
         if response.status_code == 200:
@@ -247,7 +250,7 @@ def get(mode):
     # if local
     else:
         if not os.path.isfile(path):
-            return {'error': 1, 'message': 'file not found', 'path': path}
+            print_error('get', {'error': 1, 'message': 'file not found', 'path': path})
 
         # read file
         with open(path, 'r') as file:
@@ -272,7 +275,7 @@ def add(mode, added):
     else:
         # check for file
         if not os.path.isfile(path):
-            return {'error': 1, 'message': 'file not found', 'path': path}
+            print_error('add', {'error': 1, 'message': 'file not found', 'path': path})
 
         # get and append new todo
         data = get(mode)
@@ -310,7 +313,7 @@ def remove(mode, removed):
     else:
         # check for file
         if not os.path.isfile(path):
-            return {'error': 1, 'message': 'file not found', 'path': path}
+            print_error('remove', {'error': 1, 'message': 'file not found', 'path': path})
 
         # get todos
         data = get(mode)
@@ -319,7 +322,7 @@ def remove(mode, removed):
         # check index validity
         if ((not removed.isnumeric() and removed != 'all') or
                 (removed.isnumeric() and (int(removed) > len(data['todos']) or int(removed) <= 0))):
-            return {'error': 2, 'message': 'invalid index.', 'path': path}
+            print_error('remove', {'error': 2, 'message': 'invalid index.', 'path': path})
 
         # delete all
         if removed == 'all':
@@ -343,233 +346,206 @@ def remove(mode, removed):
             'removed': removed_list
         }
 
+def print_bold(x, y=None): return cprint(x, y, attrs=['bold'], end='')
+mode_color = {
+    'remote': 'blue',
+    'main': 'yellow',
+    'local': 'magenta'
+}
 
 def print_list(action, data={}):
-    def print_bold(x, y=None): return cprint(x, y, attrs=['bold'], end='')
-    # def print_italics(x, y=None): return cprint(x, y, attrs=['bold', 'underline'], end='')
-    mode_color = {
-        'remote': 'blue',
-        'main': 'yellow',
-        'local': 'magenta'
-    }
+    # get add remove
+    if action in ['get', 'add', 'remove', 'create', 'all']:
+        # name color
+        if data['name'] in mode_color:
+            name_color = mode_color[data['name']]
+        else:
+            name_color = mode_color['local']
 
-    # if no error
-    if not 'error' in data:
-        # get add remove
-        if action in ['get', 'add', 'remove', 'create', 'all']:
-            # name color
-            if data['name'] in mode_color:
-                name_color = mode_color[data['name']]
-            else:
-                name_color = mode_color['local']
+        # feedback
+        if action == 'add':
+            print_bold('\nAdded '),
+            print_bold(f'"{data["added"]["text"]}" ', 'green')
+            print_bold('successfully to ')
+            print_bold(data['name'], name_color)
+            print_bold('!\n')
 
-            # feedback
-            if action == 'add':
-                print_bold('\nAdded '),
-                print_bold(f'"{data["added"]["text"]}" ', 'green')
-                print_bold('successfully to ')
-                print_bold(data['name'], name_color)
-                print_bold('!\n')
-
-            elif action == 'remove':
-                print_bold('\nRemoved '),
-                if len(data['todos']) == 0 and len(data['removed']) != 1:
-                    print_bold('all ', 'red')
-                elif len(data['removed']) == 1:
-                    print_bold(f'"{data["removed"][0]["text"]}" ', 'red')
-                print_bold('successfully from ')
-                print_bold(data['name'], name_color)
-                print_bold('!\n')
-
-            elif action == 'create':
-                if data['name'] == 'main':
-                    print_bold('\n')
-                    print_bold(data['name'], name_color)
-                    print_bold(' TODO list successfully created!\n')
-                else:
-                    print_bold('\nLocal ')
-                    print_bold(data['name'], name_color)
-                    print_bold(' TODO list successfully created!\n')
-
-            print_bold('\nYour ')
-            print_bold('remote', 'blue')
-            #print_bold(data['name'], name_color)
-            print_bold(' TODOs:\n')
-
-            # add
-            if action == 'add':
-                for index, todo in enumerate(data['todos']):
-                    if index == data['added']['index']:
-                        print_bold(f'    [+] {todo}\n', 'grey')
-                    else:
-                        print_bold(f'    [{index + 1}] {todo}\n', 'grey')
-
-            # remove
-            elif action == 'remove':
-                for index, todo in enumerate(data['todos']):
-                    if any(removed['index'] == index for removed in data['removed']):
-                        print_bold(
-                            f'   [-] {data["removed"][index]["text"]}\n', 'red')
-                        data['removed'].pop(index)
-
-                    print_bold(f'   [{index + 1}] {todo}\n', 'grey')
-
-                # print remaining removed todos
-                for todo in data['removed']:
-                    print_bold(f'   [-] {todo["text"]}\n', 'red')
-
-            # get and all
-            else:
-                # todos present
-                if len(data['todos']) > 0:
-                    for index, todo in enumerate(data['todos']):
-                        print_bold(f'   [{index + 1}] {todo}\n', 'grey')
-
-                # no todos
-                else:
-                    print_bold('    [?] This TODO list is empty\n', 'grey')
-                    print_bold(f'\nAdd one by running: ', 'grey')
-                    print_bold(
-                        f'todo {"local " if not data["name"] == "main" else ""}add <todo>\n', 'grey')
-            
-            if action == 'all':
-
-                print_bold('\nOther lists:\n')
-
-                # main
-                print_bold('main\n', mode_color['main']) if config['mode'] != 'main' and os.path.isfile(paths['main']) else None 
-
-                # remote
-                try:
-                    print_bold('remote\n', mode_color['remote']) if config['mode'] != 'remote' and requests.get(paths['remote']) else None
-                except requests.exceptions.RequestException:
-                    pass 
-
-                # local 
-                print_bold('local\n', mode_color['local']) if config['mode'] != 'local' and os.path.isfile(paths['local']) else None
-
-                for list in data['links']:
-                    if 'http://' in data['links'][list] or 'https://' in data['links'][list]:
-                        color = mode_color['remote']
-                    else:
-                        color = mode_color['local']
-
-                    if not list in ['main', 'remote', 'local', 'config', 'server']:
-                        print_bold(list, color) 
-                        print_bold('\t(' + data['links'][list] + ')\n', 'grey')
-                    
-
-        # # all
-        # elif action == 'all':
-        #     # data = links
-        #     print_bold('\nAvailable lists:\n')
-        #     # main
-        #     print_bold('main\n', mode_color['main']) if os.path.isfile(paths['main']) else None
-
-        #     # remote
-        #     try:
-        #         print_bold('remote\n', mode_color['remote']) if requests.get(paths['remote']) else None
-        #     except requests.exceptions.RequestException:
-        #         pass
-
-        #     del data['config']
-        #     del data['main']
-        #     del data['remote']
-        #     del data['local']
-        #     del data['server']
-
-        #     # other links
-        #     for link in data:
-        #         if 'http://' in data[link] or 'https://' in data[link]:
-        #             color = mode_color['remote']
-        #         else:
-        #             color = mode_color['local']
-
-        #         print_bold(link + '\n', color)
-
-        # settings
-        elif action == 'mode':
-            if data:
-                print_bold('\nMode set to ')
-                print_bold(data['mode'], mode_color[data['mode']])
-                print_bold('\n')
-
-            print_bold('\nMode:\n')
-            print_bold('[✓]', 'green') if config['mode'] == 'main' else print_bold('[ ]')
-            print_bold(' main\n', mode_color['main'])
-            print_bold('[✓]', 'green') if config['mode'] == 'remote' else print_bold('[ ]')
-            print_bold(' remote\n', mode_color['remote'])
-            print_bold('[✓]', 'green') if config['mode'] == 'local' else print_bold('[ ]')
-            print_bold(' local\n', mode_color['local'])
-
-            if data:
-                print_bold('\nNow you can access ', 'grey')
-                print_bold(data['mode'], 'grey')
-                print_bold(' just by running: todo\n', 'grey')
-            else:
-                print_bold('\nEdit with: todo mode <mode>\n', 'grey')
-        
-        elif action == 'help':
-            color = 'grey'
-            print_bold('\nUsage: todo [options]\n', color)
-            print_bold('\nOptions:\n', color)
-            print_bold('  create                               -   creates a new main list\n', color)
-            print_bold('  add <todo>                           -   adds a new todo to the default list\n', color)
-            print_bold('  remove <index>                       -   removes a new todo to the default list\n', color)
-            print_bold('  all                                  -   prints all todolists\n', color)
-            print_bold('  local [create | add | remove]        -   work with local todolist\n', color)
-            print_bold('  <listname> [create | add | remove]   -   work with specific todolist\n', color)
-
-    # if error
-    else:
-        print_bold('\nError: ', 'red')
-        if action in ['get', 'add', 'remove']:
-            # file not found
-            if data['error'] == 1:
-                if 'http://' in data['path'] or 'https://' in data['path']:
-                    print_bold('No ')
-                    print_bold('remote', mode_color['remote'])
-                    print_bold(' TODO list found.\n')
-                    print_bold('\nCheck the URL in the config file.\n', 'grey')
-                elif data['path'] == paths['local']:
-                    print_bold('No ')
-                    print_bold('local', mode_color['local'])
-                    print_bold(' TODO list found.\n')
-                    print_bold(
-                        '\nCreate one by running: todo local create [<name>]\n', 'grey')
-                else:
-                    print_bold('No ')
-                    print_bold('main', mode_color['main'])
-                    print_bold(' TODO list found.\n')
-                    print_bold('\nCreate by running: todo create\n', 'grey')
-            if action == 'remove' and data['error'] == 2:
-                print_bold('Invalid index.\n')
+        elif action == 'remove':
+            print_bold('\nRemoved '),
+            if len(data['todos']) == 0 and len(data['removed']) != 1:
+                print_bold('all ', 'red')
+            elif len(data['removed']) == 1:
+                print_bold(f'"{data["removed"][0]["text"]}" ', 'red')
+            print_bold('successfully from ')
+            print_bold(data['name'], name_color)
+            print_bold('!\n')
 
         elif action == 'create':
-            if data['error'] == 1:
-                if data['path'] == paths['local']:
-                    name = get(paths['local'])['name']
-                    print_bold('local', mode_color['local'])
-                    print_bold(' TODO list already exists as ')
-                    print_bold(name, mode_color['local'])
-                    print_bold('.\n')
+            if data['name'] == 'main':
+                print_bold('\n')
+                print_bold(data['name'], name_color)
+                print_bold(' TODO list successfully created!\n')
+            else:
+                print_bold('\nLocal ')
+                print_bold(data['name'], name_color)
+                print_bold(' TODO list successfully created!\n')
+
+        print_bold('\nYour ')
+        print_bold(data['name'], name_color)
+        print_bold(' TODOs:\n')
+
+        # add
+        if action == 'add':
+            for index, todo in enumerate(data['todos']):
+                if index == data['added']['index']:
+                    print_bold(f'    [+] {todo}\n', 'grey')
                 else:
-                    print_bold('main', mode_color['main'])
-                    print_bold(' TODO list already exists in ')
-                    print_bold(data['path'], mode_color['main'])
-                    print_bold('.\n')
+                    print_bold(f'    [{index + 1}] {todo}\n', 'grey')
 
-        elif action == 'mode':
-            if data['error'] == 1:
-                print_bold('Wrong index.\n')
+        # remove
+        elif action == 'remove':
+            for index, todo in enumerate(data['todos']):
+                if any(removed['index'] == index for removed in data['removed']):
+                    print_bold(
+                        f'   [-] {data["removed"][0]["text"]}\n', 'red')
+                    data['removed'].pop(0)
 
-            elif data['error'] == 2:
-                print_bold('Mode already set to ')
-                print_bold(data['mode'], mode_color[data['mode']])
+                print_bold(f'   [{index + 1}] {todo}\n', 'grey')
+
+            # print remaining removed todos
+            for todo in data['removed']:
+                print_bold(f'   [-] {todo["text"]}\n', 'red')
+
+        # get and all
+        else:
+            # todos present
+            if len(data['todos']) > 0:
+                for index, todo in enumerate(data['todos']):
+                    print_bold(f'   [{index + 1}] {todo}\n', 'grey')
+
+            # no todos
+            else:
+                print_bold('    [?] This TODO list is empty\n', 'grey')
+                print_bold(f'\nAdd one by running: ', 'grey')
+                print_bold(
+                    f'todo {"local " if not data["name"] == "main" else ""}add <todo>\n', 'grey')
+        
+        if action == 'all':
+
+            print_bold('\nOther lists:\n')
+
+            # main
+            print_bold('main\n', mode_color['main']) if config['mode'] != 'main' and os.path.isfile(paths['main']) else None 
+
+            # remote
+            try:
+                print_bold('remote\n', mode_color['remote']) if config['mode'] != 'remote' and requests.get(paths['remote']) else None
+            except requests.exceptions.RequestException:
+                pass 
+
+            # local 
+            print_bold('local\n', mode_color['local']) if config['mode'] != 'local' and os.path.isfile(paths['local']) else None
+
+            for list in data['links']:
+                if 'http://' in data['links'][list] or 'https://' in data['links'][list]:
+                    color = mode_color['remote']
+                else:
+                    color = mode_color['local']
+
+                if not list in ['main', 'remote', 'local', 'config', 'server']:
+                    print_bold(list, color) 
+                    print_bold('\t(' + data['links'][list] + ')\n', 'grey')
+
+    # settings
+    elif action == 'mode':
+        if data:
+            print_bold('\nMode set to ')
+            print_bold(data['mode'], mode_color[data['mode']])
+            print_bold('\n')
+
+        print_bold('\nMode:\n')
+        print_bold('[✓]', 'green') if config['mode'] == 'main' else print_bold('[ ]')
+        print_bold(' main\n', mode_color['main'])
+        print_bold('[✓]', 'green') if config['mode'] == 'remote' else print_bold('[ ]')
+        print_bold(' remote\n', mode_color['remote'])
+        print_bold('[✓]', 'green') if config['mode'] == 'local' else print_bold('[ ]')
+        print_bold(' local\n', mode_color['local'])
+
+        if data:
+            print_bold('\nNow you can access ', 'grey')
+            print_bold(data['mode'], 'grey')
+            print_bold(' just by running: todo\n', 'grey')
+        else:
+            print_bold('\nEdit with: todo mode <mode>\n', 'grey')
+    
+    elif action == 'help':
+        title = None
+        color = 'grey'
+        print_bold('\nUsage: todo [options]\n', title)
+        print_bold('\nOptions:\n', title)
+        print_bold('  create                               -   creates a new main list\n', color)
+        print_bold('  add <todo>                           -   adds a new todo to the default list\n', color)
+        print_bold('  remove <index>                       -   removes a new todo to the default list\n', color)
+        print_bold('  all                                  -   prints all todolists\n', color)
+        print_bold('  local [create | add | remove]        -   work with local todolist\n', color)
+        print_bold('  <listname> [create | add | remove]   -   work with specific todolist\n', color)
+        print_bold('\nColors:\n', title)
+        print_bold('yellow', 'yellow')
+        print_bold('\t- main list\n', color)
+        print_bold('blue', 'blue')
+        print_bold('\t- remote list\n', color)
+        print_bold('purple', 'magenta')
+        print_bold('\t- local list\n', color)
+
+def print_error(action, data={}):
+    print_bold('\nError: ', 'red')
+    if action in ['get', 'add', 'remove']:
+        # file not found
+        if data['error'] == 1:
+            if 'http://' in data['path'] or 'https://' in data['path']:
+                print_bold('No ')
+                print_bold('remote', mode_color['remote'])
+                print_bold(' TODO list found.\n')
+                print_bold('\nCheck the URL in the config file.\n', 'grey')
+            elif data['path'] == paths['local']:
+                print_bold('No ')
+                print_bold('local', mode_color['local'])
+                print_bold(' TODO list found.\n')
+                print_bold(
+                    '\nCreate one by running: todo local create [<name>]\n', 'grey')
+            else:
+                print_bold('No ')
+                print_bold('main', mode_color['main'])
+                print_bold(' TODO list found.\n')
+                print_bold('\nCreate by running: todo create\n', 'grey')
+        if action == 'remove' and data['error'] == 2:
+            print_bold('Invalid index.\n')
+
+    elif action == 'create':
+        if data['error'] == 1:
+            if data['path'] == paths['local']:
+                name = get(paths['local'])['name']
+                print_bold('local', mode_color['local'])
+                print_bold(' TODO list already exists as ')
+                print_bold(name, mode_color['local'])
+                print_bold('.\n')
+            else:
+                print_bold('main', mode_color['main'])
+                print_bold(' TODO list already exists in ')
+                print_bold(data['path'], mode_color['main'])
                 print_bold('.\n')
 
-        # exit
-        exit(data['error'])
+    elif action == 'mode':
+        if data['error'] == 1:
+            print_bold('Wrong index.\n')
+
+        elif data['error'] == 2:
+            print_bold('Mode already set to ')
+            print_bold(data['mode'], mode_color[data['mode']])
+            print_bold('.\n')
+
+    # exit
+    exit(data['error'])
 
 
 if __name__ == '__main__':
