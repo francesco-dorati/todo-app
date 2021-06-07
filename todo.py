@@ -7,7 +7,6 @@ import requests
 from termcolor import cprint
 
 
-
 """
     TODO
     - todo list stampa il nome del mode (local, main ecc)
@@ -72,36 +71,30 @@ except requests.exceptions.RequestException:
 
 
 def main():
-    # if user wrote only 1 argument
-    if len(sys.argv) == 1:
+    match sys.argv[1:]:
         # get
-        data = get(config['mode'])
-        print_list('get', data)
-
-    # if user wrote 2 or more arguments
-    elif len(sys.argv) >= 2:
-        option = sys.argv[1]
-
+        case []:
+            data = get(config['mode'])
+            print_list('get', data)
+        
         # create
-        if option == 'create':
+        case ['create']:
             data = create('main')
             print_list('create', data)
 
         # add
-        elif option == 'add':
-            # if local
-            data = add(config['mode'], sys.argv[2])
-            print_list('add', data)
-
+        case ['add', element]:
+            data = add(config['mode'], element)
+            print_list('add', data) 
+        
         # remove
-        elif option == 'remove':
-            data = remove(config['mode'], sys.argv[2])
+        case ['remove', index]:
+            data = remove(config['mode'], index)
             print_list('remove', data)
         
         # all
-        elif option == 'all':
+        case ['all']:
             data = get(config['mode'])
-
             try:
                 response = requests.get(paths['remote'])
                 # check for status code
@@ -113,80 +106,64 @@ def main():
                     exit(2)
             except requests.exceptions.RequestException:
                 pass
-
             print_list('all', data)
-
-        # mode
-        elif option == 'mode':
-            # if 2 arguments given
-            if len(sys.argv) == 2:
-                print_list('mode')
-
-            elif sys.argv[2] in ['remote', 'main', 'local']:
-                mode = sys.argv[2]
-                # check if mode is already set
-                if mode == config['mode']:
-                    print_error('mode', {
-                        'error': 2,
-                        'message': 'Mode already set.',
-                        'mode': mode
-                    })
-                else:
-                    # write changes to file
-                    config['mode'] = mode
-                    with open(paths['config'], 'w') as file:
-                        file.write(json.dumps(config))
-
-                    print_list('mode', {
-                        'mode': mode
-                    })
-
-            else:
-                print_error('settings', {
-                    'error': 1,
-                    'message': 'Inalid mode.',
-                })
         
+        # mode get
+        case ['mode']:
+            print_list('mode')
+        
+        # mode set
+        case ['mode', mode] if mode in ['remote', 'main', 'local']:
+            # check if mode is already set
+            if mode == config['mode']:
+                print_error('mode', {
+                    'error': 2,
+                    'message': 'Mode already set.',
+                    'mode': mode
+                })
+
+            # write changes to file
+            else:
+                config['mode'] = mode
+                with open(paths['config'], 'w') as file:
+                    file.write(json.dumps(config))
+
+                print_list('mode', {
+                    'mode': mode
+                })
+            
         # serve
-        elif option == 'serve':
+        case ['serve']:
             from server import app
             app.run(host='0.0.0.0', port='5000', debug=True)
-        
+
         # help
-        elif option == 'help':
+        case ['help']:
             print_list('help')
+
+        # paths get
+        case [path] if path in paths:
+            data = get(path)
+            print_list('get', data)
         
-        # paths
-        elif option in paths:
-            # get
-            if len(sys.argv) == 2:
-                data = get(option)
-                print_list('get', data)
+        # path create
+        case [path, 'create']:
+            data = create(path)
+            print_list('create', data)
 
-            else:
-                mode = sys.argv[2]
+        # path add
+        case [path, 'add', element]:
+            data = add(path, element)
+            print_list('add', data)
 
-                # create
-                if mode == 'create':
-                    data = create(option)
+        # path remove
+        case [path, 'remove', index]:
+            data = remove(path, index)
+            print_list('remove', data)
 
-                # add
-                elif mode == 'add':
-                    data = add(option, sys.argv[3])
-
-                # remove
-                elif mode == 'remove':
-                    data = remove(option, sys.argv[3])
-
-                print_list(mode, data)
-
-        else:
-            print(f'Illegal option "{sys.argv[1]}".')
+        case [*command]:
+            print(f"Illegal command {command}")
             exit(1)
-
-    else:
-        print(f'Invalid number of arguments.')
-        exit(1)
 
 # create
 def create(mode, name=None):
