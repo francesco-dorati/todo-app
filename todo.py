@@ -9,6 +9,8 @@ from termcolor import cprint
 
 """
     TODO
+    ** mettere un file per ogni branch (projects.todo), todo all stampa i locali se in loxcale e entrambi se remote
+    ** aggiungere comando branch
     - todo list stampa il nome del mode (local, main ecc)
     - todo all
     - fix todo all on remote 
@@ -56,18 +58,19 @@ if os.path.isfile(paths['main']):
         for name in links:
             paths[name] = links[name]
 
-# load remote links
-try:
-    response = requests.get(paths['remote'])
-    # check for status code
-    if response.status_code == 200:
-        for name in json.loads(response.text)['links']:
-            paths[name] = paths['remote'] + name
-    else:
-        print(response.text)
-        exit(2)
-except requests.exceptions.RequestException:
-    pass
+# add if remote
+# # load remote links
+# try:
+#     response = requests.get(paths['remote'])
+#     # check for status code
+#     if response.status_code == 200:
+#         for name in json.loads(response.text)['links']:
+#             paths[name] = paths['remote'] + name
+#     else:
+#         print(response.text)
+#         exit(2)
+# except requests.exceptions.RequestException:
+#     pass
 
 
 def main():
@@ -95,17 +98,17 @@ def main():
         # all
         case ['all']:
             data = get(config['mode'])
-            try:
-                response = requests.get(paths['remote'])
-                # check for status code
-                if response.status_code == 200:
-                    for name in json.loads(response.text)['links']:
-                        data['links'][name] = paths['remote'] + name
-                else:
-                    print(response.text)
-                    exit(2)
-            except requests.exceptions.RequestException:
-                pass
+            # try:
+            #     response = requests.get(paths['remote'])
+            #     # check for status code
+            #     if response.status_code == 200:
+            #         for name in json.loads(response.text)['links']:
+            #             data['links'][name] = paths['remote'] + name
+            #     else:
+            #         print(response.text)
+            #         exit(2)
+            # except requests.exceptions.RequestException:
+            #     pass
             print_list('all', data)
         
         # mode get
@@ -141,25 +144,30 @@ def main():
         case ['help']:
             print_list('help')
 
-        # paths get
-        case [path] if path in paths:
-            data = get(path)
-            print_list('get', data)
+        # create branch
+        case ['branch', name]:
+
+            pass
+
+        # # paths get
+        # case [path] if path in paths:
+        #     data = get(path)
+        #     print_list('get', data)
         
-        # path create
-        case [path, 'create']:
-            data = create(path)
-            print_list('create', data)
+        # # path create
+        # case [path, 'create']:
+        #     data = create(path)
+        #     print_list('create', data)
 
-        # path add
-        case [path, 'add', element]:
-            data = add(path, element)
-            print_list('add', data)
+        # # path add
+        # case [path, 'add', element]:
+        #     data = add(path, element)
+        #     print_list('add', data)
 
-        # path remove
-        case [path, 'remove', index]:
-            data = remove(path, index)
-            print_list('remove', data)
+        # # path remove
+        # case [path, 'remove', index]:
+        #     data = remove(path, index)
+        #     print_list('remove', data)
 
         case [*command]:
             print(f"Illegal command {command}")
@@ -415,10 +423,10 @@ def print_list(action, data={}):
             print_bold('main\n', mode_color['main']) if config['mode'] != 'main' and os.path.isfile(paths['main']) else None 
 
             # remote
-            try:
-                print_bold('remote\n', mode_color['remote']) if config['mode'] != 'remote' and requests.get(paths['remote']) else None
-            except requests.exceptions.RequestException:
-                pass 
+            # try:
+            #     print_bold('remote\n', mode_color['remote']) if config['mode'] != 'remote' and requests.get(paths['remote']) else None
+            # except requests.exceptions.RequestException:
+            #     pass 
 
             # local 
             print_bold('local\n', mode_color['local']) if config['mode'] != 'local' and os.path.isfile(paths['local']) else None
