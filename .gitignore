@@ -2,3 +2,5 @@ __pycache__
 .DS_Store
 *.todo
 .vscode
+settings.json
+.todo

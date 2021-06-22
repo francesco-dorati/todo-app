@@ -3,28 +3,405 @@ import sys
 import os
 import json
 import requests
+import datetime
 
 from termcolor import cprint
 
+import helper
+
+"""
+lists/sections:
+- today
+- tomorrow
+- this week
+- next week
+
+- local
+- <other>
+"""
+
+base_path = '/'.join(os.path.realpath(__file__).split('/')[:-1]) + '/'
+settings_path = base_path + 'settings.json'
+
+
+# load settings
+settings = None
+if os.path.isfile(settings_path):
+    with open(settings_path, 'r') as file:
+        settings = json.load(file)
+
+
+def today():
+    return datetime.date.today()
+
+def tomorrow():
+    return datetime.date.today() + datetime.timedelta(days=1)
+
+def main():
+    match sys.argv[1:]:
+        # shell
+        case []:
+            shell()
+        
+        # setup
+        case ['setup']:
+            setup()
+
+        # create list
+        case ['create', 'list' | 'section' as type, list_name]:
+            pass
+
+        # create local list
+        case ['create', 'local']:
+            pass
+
+        # rename
+        case ['rename', list_name, new_list_name]:
+            pass
+
+        # help
+        case ['help']:
+            pass
+
+        # get
+        case [list_name]:
+            get(list_name)
+
+        # add
+        case [list_name, 'a' | 'add', text]:
+            add(list_name, text.strip())
+
+        # update
+        case [list_name, 'u' | 'update', index, text]:
+            update(list_name, int(index), text.strip())
+
+        # remove
+        case [list_name, 'r' | 'remove', index]:
+            remove(list_name, int(index))
+
+
+# todo projects create todo-app
+# todo projects todo-app add
+
+# settings.json
+# {
+#   mode: "local",
+#   path: "",
+# }
+
+
+# .todo
+#   all.todo
+
+# all.todo
+# {
+#   name: 'all',
+#   todos: [
+#       {text: 'todo', date: x, expiration: x}
+#   ] 
+# }
+
+def shell():
+    helper.clear()
+
+def setup():
+    # ask for mode
+    while True:
+        mode = input("Mode (1: local, 2: remote): ")
+        if mode == '1':
+            mode = 'local'
+            break
+        elif mode == '2':
+            mode = 'remote'
+            break
+    
+    # local
+    if mode == 'local':
+        # ask for path
+        while True:
+            path = input("Path for todo folder (Enter for default): ")
+            if path == '': # default
+                path = base_path
+                break
+            elif os.path.isdir(path):
+                path = path.strip('/') + '/'
+                break
+        
+        print('Creating files...')
+
+        # create settings file
+        with open(settings_path, 'w') as file:
+            file.write(json.dumps({
+                'mode': 'local',
+                'path': path + '.todo'
+            }))
+
+
+        # check if folder already exists
+        if os.path.isfile(path + '.todo/all.todo'):
+            while True:
+                a = input('A todo folder already exists. Do you want to overwrite it [y/N]? ').lower()
+                # overwrite
+                if a == 'y' or a == 'yes':
+                    print("Overwriting files...")
+                    with open(path + '.todo/all.todo', 'w') as file:
+                        file.write(json.dumps({
+                            'name': 'all',
+                            'todos': [],
+                        }))
+                    break
+
+                # do not overwrite
+                elif a == 'n' or a == 'no' or a == '':
+                    break
+
+        # if does not exist
+        else:
+            # create todo folder
+            os.mkdir(path + '.todo')
+
+            # create list all
+            with open(path + '.todo/all.todo', 'w') as file:
+                file.write(json.dumps({
+                    'name': 'all',
+                    'todos': [],
+                }))
+        
+        print("Done.")
+
+    # remote
+    else:
+        # ask for path
+        while True:
+            path = input("Address for todo server: ")
+            print('Connecting to server...')
+            if True:    # TODO ping the server and break on response
+                print('Connection successful.')
+                break
+            else:
+                print('Server not responding, provide another address.')
+        
+        print('Creating files...')
+
+        # create settings file
+        with open(settings_path, 'w') as file:
+            file.write(json.dumps({
+                'mode': 'remote',
+                'path': path,
+            }))
+        
+        print("Done.")
+
+def get(list_name: str):
+    if not settings:
+        print('Todo list is not set up yet.')
+        print('Initialize it by running \'todo setup\'')
+        return
+    
+    match list_name:
+        case 'all':
+            # check if file exists
+            if not os.path.isfile(settings['path'] + '/all.todo'):
+                print('List \'all\' is not set up yet.')
+                print('Initialize it by running \'todo setup\'')
+                return
+
+            # load list from file
+            with open(settings['path'] + '/all.todo') as file:
+                list = json.load(file)
+            
+            # print all
+            for todo in list['todos']:
+                print(todo['text'], end='')
+                print(f"\tfor {todo['expiration']}") if todo['expiration'] else print() 
+
+
+        case 'today':
+            # check if file exists
+            if not os.path.isfile(settings['path'] + '/all.todo'):
+                print('List \'all\' is not set up yet.')
+                print('Initialize it by running \'todo setup\'')
+                return
+
+            # load list from file
+            with open(settings['path'] + '/all.todo') as file:
+                list = json.load(file)
+
+            
+            # print just today
+            for todo in list['todos']:
+                if not todo['expiration']:
+                    continue
+
+                expiration = datetime.date.fromisoformat(todo['expiration'])
+                if today() >= expiration:
+                    print(todo['text'])
+
+        case 'tomorrow':
+            # check if file exists
+            if not os.path.isfile(settings['path'] + '/all.todo'):
+                print('List \'all\' is not set up yet.')
+                print('Initialize it by running \'todo setup\'')
+                return
+
+            # load list from file
+            with open(settings['path'] + '/all.todo') as file:
+                list = json.load(file)
+
+            # print just tomorrow
+            for todo in list['todos']:
+                if not todo['expiration']:
+                    continue
+
+                expiration = datetime.date.fromisoformat(todo['expiration'])
+                if tomorrow() >= expiration and today() < expiration:
+                    print(todo['text'])
+
+
+        case 'local':
+            # print local list
+            pass
+
+        case name if name in []:
+            # add to list_name without expiration
+            pass
+
+        case _:
+            # wrong list name
+            pass
+
+
+def add(list_name: str, text: str):
+    if not settings:
+        print('Todo list is not set up yet.')
+        print('Initialize it by running \'todo setup\'')
+        return
+
+    match list_name:
+        # all, today and tomorrow
+        case 'all' | 'today' | 'tomorrow':
+            # check if file exists
+            if not os.path.isfile(settings['path'] + '/all.todo'):
+                print('List \'all\' is not set up yet.')
+                print('Initialize it by running \'todo setup\'')
+                return
+
+            # calculate expiration
+            match list_name:
+                case 'all':
+                    expiration = None
+                case 'today':
+                    expiration = str(today())
+                case 'tomorrow':
+                    expiration = str(tomorrow())
+
+            # read from file
+            with open(settings['path'] + '/all.todo', 'r') as file:
+                list = json.load(file)
+
+            # add to all with expiration tomorrow
+            list['todos'].append({
+                'text': text,
+                'time': str(datetime.datetime.now()),
+                'expiration': expiration
+            })
+
+            # write to file
+            with open(settings['path'] + '/all.todo', 'w') as file:
+                file.write(json.dumps(list))
+
+
+        case 'local':
+            # add to local list
+            pass
+
+        case name if name in []:
+            # add to list_name without expiration
+            pass
+
+        case _:
+            # wrong list name
+            pass
+
+
+def update(list_name: str, index: int, text: str):
+    if not settings:
+        print('Todo list is not set up yet.')
+        print('Initialize it by running \'todo setup\'')
+        return
+
+    match list_name:
+        case 'all':
+            # check if file exists
+            if not os.path.isfile(settings['path'] + '/all.todo'):
+                print('List \'all\' is not set up yet.')
+                print('Initialize it by running \'todo setup\'')
+                return
+
+            # read from file
+            with open(settings['path'] + '/all.todo', 'r') as file:
+                list = json.load(file)
+
+            # update the todo
+            list['todos'][index - 1]['text'] = text
+
+            # write to file
+            with open(settings['path'] + '/all.todo', 'w') as file:
+                file.write(json.dumps(list))
+
+        case 'today':
+            pass
+        case 'tomorrow':
+            pass
+        case 'local':
+            pass
+        case _:
+            pass
+
+
+def remove(list_name: str, index: int):
+    if not settings:
+        print('Todo list is not set up yet.')
+        print('Initialize it by running \'todo setup\'')
+        return
+    
+    match list_name:
+        case 'all':
+            # check if file exists
+            if not os.path.isfile(settings['path'] + '/all.todo'):
+                print('List \'all\' is not set up yet.')
+                print('Initialize it by running \'todo setup\'')
+                return
+
+            # read from file
+            with open(settings['path'] + '/all.todo', 'r') as file:
+                list = json.load(file)
+
+            # remove the todo
+            list['todos'].pop(index - 1)
+
+            # write to file
+            with open(settings['path'] + '/all.todo', 'w') as file:
+                file.write(json.dumps(list))
+
+        case 'today':
+            pass
+        case 'tomorrow':
+            pass
+        case 'local':
+            pass
+        case _:
+            pass
+
+# ---
 
 """
     TODO
-    ** mettere un file per ogni branch (projects.todo), todo all stampa i locali se in loxcale e entrambi se remote
-    ** aggiungere comando branch
-    - todo list stampa il nome del mode (local, main ecc)
-    - todo all
-    - fix todo all on remote 
-    - rimuovere local todos
-    - fix error message (no main todolist found)
-    
-    - aggiungere possibilita si annullare il remove con undo (per tempo)
+    - aggiungere possibilita si annullare il remove con undo (solo nella shell)
 
     commands
-        - todo rename
         - todo remove
-            - "todo remove" print todos and prompts for dalete until -1 given 
             - "todo remove" multiple elements
-        - todo branch
 
     - fix readme
 """
@@ -73,7 +450,7 @@ if os.path.isfile(paths['main']):
 #     pass
 
 
-def main():
+def old_main():
     match sys.argv[1:]:
         # get
         case []:
@@ -215,7 +592,7 @@ def create(mode, name=None):
 
 
 # GET
-def get(mode):
+def old_get(mode):
     path = paths[mode]
 
     # if remote
@@ -242,7 +619,7 @@ def get(mode):
             return json.loads(file.read())
 
 # ADD
-def add(mode, added):
+def old_add(mode, added):
     path = paths[mode]
 
     # if remote
@@ -281,7 +658,7 @@ def add(mode, added):
 
 
 # REMOVE
-def remove(mode, removed):
+def old_remove(mode, removed):
     path = paths[mode]
 
     # if remote
