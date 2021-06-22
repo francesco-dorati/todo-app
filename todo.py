@@ -31,12 +31,6 @@ if os.path.isfile(settings_path):
         settings = json.load(file)
 
 
-def today():
-    return datetime.date.today()
-
-def tomorrow():
-    return datetime.date.today() + datetime.timedelta(days=1)
-
 def main():
     match sys.argv[1:]:
         # shell
@@ -232,9 +226,8 @@ def get(list_name: str):
             for todo in list['todos']:
                 if not todo['expiration']:
                     continue
-
                 expiration = datetime.date.fromisoformat(todo['expiration'])
-                if today() >= expiration:
+                if helper.today() >= expiration:
                     print(todo['text'])
 
         case 'tomorrow':
@@ -254,7 +247,7 @@ def get(list_name: str):
                     continue
 
                 expiration = datetime.date.fromisoformat(todo['expiration'])
-                if tomorrow() >= expiration and today() < expiration:
+                if helper.tomorrow() >= expiration and helper.today() < expiration:
                     print(todo['text'])
 
 
@@ -291,9 +284,9 @@ def add(list_name: str, text: str):
                 case 'all':
                     expiration = None
                 case 'today':
-                    expiration = str(today())
+                    expiration = str(helper.today())
                 case 'tomorrow':
-                    expiration = str(tomorrow())
+                    expiration = str(helper.tomorrow())
 
             # read from file
             with open(settings['path'] + '/all.todo', 'r') as file:
@@ -323,7 +316,7 @@ def add(list_name: str, text: str):
             # wrong list name
             pass
 
-
+# UPDATE
 def update(list_name: str, index: int, text: str):
     if not settings:
         print('Todo list is not set up yet.')
@@ -350,11 +343,64 @@ def update(list_name: str, index: int, text: str):
                 file.write(json.dumps(list))
 
         case 'today':
-            pass
+            # check if file exists
+            if not os.path.isfile(settings['path'] + '/all.todo'):
+                print('List \'all\' is not set up yet.')
+                print('Initialize it by running \'todo setup\'')
+                return
+
+            # read from file
+            with open(settings['path'] + '/all.todo', 'r') as file:
+                list = json.load(file)
+
+            # filter todos
+            today_counter = 1
+            for todo in list['todos']:
+                if not todo['expiration']:
+                    continue
+                expiration = datetime.date.fromisoformat(todo['expiration'])
+                if helper.today() >= expiration:
+                    if today_counter == index:
+                        todo['text'] = text
+                        break
+                    else:
+                        today_counter += 1
+
+            # write to file
+            with open(settings['path'] + '/all.todo', 'w') as file:
+                file.write(json.dumps(list))
+
         case 'tomorrow':
-            pass
+            # check if file exists
+            if not os.path.isfile(settings['path'] + '/all.todo'):
+                print('List \'all\' is not set up yet.')
+                print('Initialize it by running \'todo setup\'')
+                return
+
+            # read from file
+            with open(settings['path'] + '/all.todo', 'r') as file:
+                list = json.load(file)
+
+            # filter todos
+            tomorrow_counter = 1
+            for todo in list['todos']:
+                if not todo['expiration']:
+                    continue
+                expiration = datetime.date.fromisoformat(todo['expiration'])
+                if helper.tomorrow() >= expiration and helper.today() < expiration:
+                    if tomorrow_counter == index:
+                        todo['text'] = text
+                        break
+                    else:
+                        tomorrow_counter += 1
+
+            # write to file
+            with open(settings['path'] + '/all.todo', 'w') as file:
+                file.write(json.dumps(list))
+
         case 'local':
             pass
+
         case _:
             pass
 

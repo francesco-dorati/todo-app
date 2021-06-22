@@ -1,4 +1,5 @@
 import os
+import datetime
 
 def clear():
   
@@ -9,3 +10,10 @@ def clear():
     # for mac and linux(here, os.name is 'posix')
     else:
         _ = os.system('clear')
+
+
+def today():
+    return datetime.date.today()
+
+def tomorrow():
+    return datetime.date.today() + datetime.timedelta(days=1)
