@@ -74,6 +74,9 @@ def main():
         # remove
         case [list_name, 'r' | 'remove', index]:
             remove(list_name, int(index))
+        
+        case [list_name, 'o' | 'order', index, destination]:
+            order(list_name, int(index), int(destination))
 
 
 # todo projects create todo-app
@@ -249,10 +252,7 @@ def create(type: str, name: str = None):
                 }, file)
             
             print(f"Created new local list \"{name}\" successfully.")
-
-            
-
-
+       
 # GET
 def get(list_name: str):
     if not settings:
@@ -284,7 +284,7 @@ def get(list_name: str):
         case 'local':
             # check if file exists
             if not os.path.isfile('local.todo'):
-                logger.error('Local list is not set up yet. \nCreate it by running \'todo create local\'')
+                logger.error('List \"local\" is not set up yet. \nCreate it by running \'todo create local\'')
 
             # load list from file
             with open('local.todo') as file:
@@ -353,7 +353,7 @@ def add(list_name: str, text: str):
         case 'local':
             # check if file exists
             if not os.path.isfile('local.todo'):
-                logger.error('Local list is not set up yet. \nCreate it by running \'todo create local\'')
+                logger.error('List \"local\" is not set up yet. \nCreate it by running \'todo create local\'')
 
             # read from file
             with open('local.todo', 'r') as file:
@@ -443,7 +443,7 @@ def update(list_name: str, index: int, text: str):
         case 'local':
             # check if file exists
             if not os.path.isfile('local.todo'):
-                logger.error('Local list is not set up yet. \nCreate it by running \'todo create local\'')
+                logger.error('List \"local\" is not set up yet. \nCreate it by running \'todo create local\'')
 
             # read from file
             with open('local.todo', 'r') as file:
@@ -522,7 +522,7 @@ def remove(list_name: str, index: int):
         case 'local':
             # check if file exists
             if not os.path.isfile('local.todo'):
-                logger.error('List \'all\' is not set up yet. \nInitialize it by running \'todo setup\'')
+                logger.error('List \'local\' is not set up yet. \nInitialize it by running \'todo create local\'')
 
             # read from file
             with open('local.todo', 'r') as file:
@@ -545,6 +545,99 @@ def remove(list_name: str, index: int):
 
         case _:
             pass
+
+# ORDER
+def order(list_name: str, index: int, destination: int):
+    if not settings:
+        logger.error('Todo list is not set up yet.\n Initialize it by running \'todo setup\'')
+
+    if index <= 0 or destination <= 0:
+        logger.error("Index value must be positive.") 
+
+    match list_name:
+        case 'all' | 'today' | 'tomorrow':
+            # check if file exists
+            if not os.path.isfile(settings['path'] + '/all.todo'):
+                logger.error('List \'all\' is not set up yet. \nInitialize it by running \'todo setup\'')
+
+            # read from file
+            with open(settings['path'] + '/all.todo', 'r') as file:
+                list = json.load(file)
+
+            match list_name:
+                case 'all':
+                    # check if index is valid
+                    if len(list['todos']) < index or len(list['todos']) < destination:
+                        logger.error("Index value out of list.")
+
+                    relative_index, relative_destination = index - 1, destination - 1
+
+                case 'today':
+                    # check if index is valid
+                    if len(list['todos']) < index or len(list['todos']) < destination:
+                        logger.error("Index value out of list.")
+                    
+                    # get real indexes
+                    today = helper.filter_today(list['todos'])
+                    relative_index = list['todos'].index(today[index - 1])
+                    relative_destination = list['todos'].index(today[destination - 1])
+
+                case 'tomorrow':
+                    # check if index is valid
+                    if len(list['todos']) < index or len(list['todos']) < destination:
+                        logger.error("Index value out of list.")
+                    
+                    # get real indexes
+                    tomorrow = helper.filter_tomorrow(list['todos'])
+                    relative_index = list['todos'].index(tomorrow[index - 1])
+                    relative_destination = list['todos'].index(tomorrow[destination - 1])
+
+            # change position of item
+            item = list['todos'].pop(relative_index)
+            list['todos'].insert(relative_destination, item)
+
+
+            # write to file
+            with open(settings['path'] + '/all.todo', 'w') as file:
+                json.dump(list, file)
+
+            # print the list
+            match list_name:
+                case 'all':
+                    logger.print_list(list['todos'], name=list_name, order=(item['text'], index, destination))
+
+                case 'today':
+                    logger.print_list(helper.filter_today(list['todos']), name=list_name, order=(item['text'], index, destination))
+
+                case 'tomorrow':
+                    logger.print_list(helper.filter_tomorrow(list['todos']), name=list_name, order=(item['text'], index, destination))
+
+
+        case 'local':
+            # check if file exists
+            if not os.path.isfile('local.todo'):
+                logger.error('List \'local\' is not set up yet. \nInitialize it by running \'todo create local\'')
+
+            # read from file
+            with open('local.todo', 'r') as file:
+                list = json.load(file)
+
+            # check if index is valid
+            if len(list['todos']) < index or len(list['todos']) < destination:
+                logger.error("Index value out of list.")
+
+            relative_index, relative_destination = index - 1, destination - 1
+
+            # change position of item
+            item = list['todos'].pop(relative_index)
+            list['todos'].insert(relative_destination, item)
+
+            # write to file
+            with open('local.todo', 'w') as file:
+                json.dump(list, file)
+
+            # print the list
+            logger.print_list(list['todos'], name=list_name, order=(item['text'], index, destination))
 
 # ---
 

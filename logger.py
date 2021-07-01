@@ -11,7 +11,7 @@ def clear_screen():
     else:        
         _ = os.system('clear') # unix
 
-def print_list(list: list, name: str, add: str = None, update: tuple = None, remove: str = None):
+def print_list(list: list, name: str, add: str = None, update: tuple[str, str] = None, remove: str = None, order: tuple[str, int, int] = None):
   print()
 
   if add:
@@ -22,6 +22,9 @@ def print_list(list: list, name: str, add: str = None, update: tuple = None, rem
 
   elif remove:
     print(f"Removed \"{remove}\" successfully from {name}.\n")
+
+  elif order:
+    print(f'Moved \"{order[0]}\" from position {order[1]} to position {order[2]}.\n')
   
   if list:
     print(f"{name} list:")
