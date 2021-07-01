@@ -11,22 +11,27 @@ def clear_screen():
     else:        
         _ = os.system('clear') # unix
 
-def print_list(list: list, add: str = None, update: str = None, remove: str = None):
+def print_list(list: list, name: str, add: str = None, update: tuple = None, remove: str = None):
+  print()
+
   if add:
-    print(f"Added \"{add}\" successfully to the list.\n")
+    print(f"Added \"{add}\" successfully to {name}.\n")
 
   elif update:
-    print(f"Updated \"{update}\" successfully.\n")
+    print(f"Updated \"{update[0]}\" to \"{update[1]}\" successfully from {name}.\n")
 
   elif remove:
-    print(f"Removed \"{remove}\" successfully.\n")
+    print(f"Removed \"{remove}\" successfully from {name}.\n")
   
   if list:
+    print(f"{name} list:")
     for index, todo in enumerate(list):
       print(f"[{index + 1}] {todo['text']}")
       #print(f"{todo['expiration']} {helper.is_today(todo['expiration'])}")
   else:
-    print("No todos yet.")
+    print(f"{name} list is empty.")
+  
+  print()
 
 def error(message: str):
   print(f"Error: {message}")

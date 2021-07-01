@@ -44,11 +44,11 @@ def main():
 
         # create list
         case ['create', 'list' | 'section' as type, list_name]:
-            pass
+            create(type, name)
 
         # create local list
         case ['create', 'local']:
-            pass
+            create('local')
 
         # rename
         case ['rename', list_name, new_list_name]:
@@ -79,54 +79,59 @@ def main():
 # todo projects create todo-app
 # todo projects todo-app add
 
-# settings.json
-# {
-#   mode: "local",
-#   path: "",
-# }
-
-
-# .todo
-#   all.todo
-
-# all.todo
-# {
-#   name: 'all',
-#   todos: [
-#       {text: 'todo', date: x, expiration: x}
-#   ] 
-# }
 
 def shell():
-    default_list = 'all'
+    current_list = 'all'
+    logger.clear_screen()
+    get(current_list)
+
     while True:
-        logger.clear_screen()
-        get(default_list)
         command = input("\n> ").split()
         match command:
-            # get
-            case [list_name]:
-                default_list = list_name
-
-            # add
-            case [list_name, 'a' | 'add', text]:
-                logger.clear_screen()
-                add(list_name, text.strip())
-
-            # update
-            case [list_name, 'u' | 'update', index, text]:
-                logger.clear_screen()
-                update(list_name, int(index), text.strip())
-
-            # remove
-            case [list_name, 'r' | 'remove', index]:
-                logger.clear_screen()
-                remove(list_name, int(index))
-            
             # exit
             case ['exit']:
                 logger.clear_screen()
-                break
+                exit()
+
+            # current add
+            case ['a' | 'add', text]:
+                logger.clear_screen()
+                add(current_list, text.strip())
+
+            # current update
+            case ['u' | 'update', index, text]:
+                logger.clear_screen()
+                update(current_list, int(index), text.strip())
+
+            # current remove
+            case ['r' | 'remove', index]:
+                logger.clear_screen()
+                remove(current_list, int(index))
+            
+            # list get
+            case [list_name]:
+                current_list = list_name
+                logger.clear_screen()
+                get(current_list)
+
+            # list add
+            case [list_name, 'a' | 'add', text]:
+                current_list = list_name
+                logger.clear_screen()
+                add(list_name, text.strip())
+
+            # list update
+            case [list_name, 'u' | 'update', index, text]:
+                current_list = list_name
+                logger.clear_screen()
+                update(list_name, int(index), text.strip())
+
+            # list remove
+            case [list_name, 'r' | 'remove', index]:
+                current_list = list_name
+                logger.clear_screen()
+                remove(list_name, int(index))
+            
 
 
 def setup():
@@ -156,10 +161,10 @@ def setup():
 
         # create settings file
         with open(settings_path, 'w') as file:
-            file.write(json.dumps({
+            json.dump({
                 'mode': 'local',
                 'path': path + '.todo'
-            }))
+            }, file)
 
 
         # check if folder already exists
@@ -170,10 +175,10 @@ def setup():
                 if a == 'y' or a == 'yes':
                     print("Overwriting files...")
                     with open(path + '.todo/all.todo', 'w') as file:
-                        file.write(json.dumps({
+                        json.dump({
                             'name': 'all',
                             'todos': [],
-                        }))
+                        }, file)
                     break
 
                 # do not overwrite
@@ -187,10 +192,10 @@ def setup():
 
             # create list all
             with open(path + '.todo/all.todo', 'w') as file:
-                file.write(json.dumps({
+                json.dump({
                     'name': 'all',
                     'todos': [],
-                }))
+                }, file)
         
         print("Done.")
 
@@ -210,19 +215,48 @@ def setup():
 
         # create settings file
         with open(settings_path, 'w') as file:
-            file.write(json.dumps({
+            json.dump({
                 'mode': 'remote',
                 'path': path,
-            }))
+            }, file)
         
         print("Done.")
+
+# CREATE
+def create(type: str, name: str = None):
+    match type:
+        case 'list':
+            if not name:
+                logger.error("List name is required.")
+
+        case 'section':
+            if not name:
+                logger.error("List name is required.")
+
+        case 'local':
+            if not name:
+                name = os.path.basename(os.getcwd())
+
+            # check if local file exists
+            if os.path.isfile('local.todo'):
+                logger.error("Local list already exists.")
+            
+            # create file
+            with open('local.todo', 'w') as file:
+                json.dump({
+                    'name': name,
+                    'todos': []
+                }, file)
+            
+            print(f"Created new local list \"{name}\" successfully.")
+
+            
+
 
 # GET
 def get(list_name: str):
     if not settings:
-        print('Todo list is not set up yet.')
-        print('Initialize it by running \'todo setup\'')
-        return
+        logger.error('Todo list is not set up yet.\n Initialize it by running \'todo setup\'')
     
     match list_name:
         case 'all' | 'today' | 'tomorrow':
@@ -239,21 +273,30 @@ def get(list_name: str):
             # print the list
             match list_name:
                 case 'all':
-                    logger.print_list(list['todos'])
+                    logger.print_list(list['todos'], name=list_name)
 
                 case 'today':
-                    logger.print_list(helper.filter_today(list['todos']))
+                    logger.print_list(helper.filter_today(list['todos']), name=list_name)
 
                 case 'tomorrow':
-                    logger.print_list(helper.filter_tomorrow(list['todos']))
+                    logger.print_list(helper.filter_tomorrow(list['todos']), name=list_name)
 
         case 'local':
-            # print local list
-            pass
+            # check if file exists
+            if not os.path.isfile('local.todo'):
+                logger.error('Local list is not set up yet. \nCreate it by running \'todo create local\'')
+
+            # load list from file
+            with open('local.todo') as file:
+                list = json.load(file)
+            
+            # print the list
+            logger.print_list(list['todos'], name=list_name)
 
         case name if name in []:
             # add to list_name without expiration
             pass
+
 
         case _:
             # wrong list name
@@ -262,18 +305,14 @@ def get(list_name: str):
 # ADD
 def add(list_name: str, text: str):
     if not settings:
-        print('Todo list is not set up yet.')
-        print('Initialize it by running \'todo setup\'')
-        return
+        logger.error('Todo list is not set up yet.\n Initialize it by running \'todo setup\'')
 
     match list_name:
         # all, today and tomorrow
         case 'all' | 'today' | 'tomorrow':
             # check if file exists
             if not os.path.isfile(settings['path'] + '/all.todo'):
-                print('List \'all\' is not set up yet.')
-                print('Initialize it by running \'todo setup\'')
-                return
+                logger.error('List \'all\' is not set up yet. Initialize it by running \'todo setup\'')
 
             # read from file
             with open(settings['path'] + '/all.todo', 'r') as file:
@@ -297,13 +336,41 @@ def add(list_name: str, text: str):
 
             # write to file
             with open(settings['path'] + '/all.todo', 'w') as file:
-                file.write(json.dumps(list))
+                json.dump(list, file)
             
-            logger.print_list(list['todos'], add=text)
+            # print the list
+            match list_name:
+                case 'all':
+                    logger.print_list(list['todos'], name=list_name, add=text)
+
+                case 'today':
+                    logger.print_list(helper.filter_today(list['todos']), name=list_name, add=text)
+
+                case 'tomorrow':
+                    logger.print_list(helper.filter_tomorrow(list['todos']), name=list_name, add=text)
+
 
         case 'local':
-            # add to local list
-            pass
+            # check if file exists
+            if not os.path.isfile('local.todo'):
+                logger.error('Local list is not set up yet. \nCreate it by running \'todo create local\'')
+
+            # read from file
+            with open('local.todo', 'r') as file:
+                list = json.load(file)
+
+            # add to all with expiration tomorrow
+            list['todos'].append({
+                'text': text,
+                'time': str(datetime.datetime.now()),
+            })
+
+            # write to file
+            with open('local.todo', 'w') as file:
+                json.dump(list, file)
+            
+            # print the list
+            logger.print_list(list['todos'], name=list_name, add=text)
 
         case name if name in []:
             # add to list_name without expiration
@@ -316,17 +383,13 @@ def add(list_name: str, text: str):
 # UPDATE
 def update(list_name: str, index: int, text: str):
     if not settings:
-        print('Todo list is not set up yet.')
-        print('Initialize it by running \'todo setup\'')
-        return
+        logger.error('Todo list is not set up yet.\n Initialize it by running \'todo setup\'')
 
     match list_name:
         case 'all' | 'today' | 'tomorrow':
             # check if file exists
             if not os.path.isfile(settings['path'] + '/all.todo'):
-                print('List \'all\' is not set up yet.')
-                print('Initialize it by running \'todo setup\'')
-                return
+                logger.error('List \'all\' is not set up yet. \nInitialize it by running \'todo setup\'')
 
             # read from file
             with open(settings['path'] + '/all.todo', 'r') as file:
@@ -334,23 +397,68 @@ def update(list_name: str, index: int, text: str):
 
             match list_name:
                 case 'all':
+                    # check if index is valid
+                    if len(list['todos']) < index:
+                        logger.error("Index value out of list.")
+
                     # update the todo
+                    old_text = list['todos'][index - 1]['text']
                     list['todos'][index - 1]['text'] = text
 
                 case 'today':
+                    # check if index is valid
+                    if len(helper.filter_today(list['todos'])) < index: 
+                        logger.error("Index value out of list.")
+
                     # filter todos
-                    list['todos'][list['todos'].index(helper.filter_today(list['todos'])[index - 1])]['text'] = text
+                    old = helper.filter_today(list['todos'])[index - 1]
+                    old_text = old['text']
+                    list['todos'][list['todos'].index(old)]['text'] = text
 
                 case 'tomorrow':
+                    # check if index is valid
+                    if len(helper.filter_tomorrow(list['todos'])) < index: 
+                        logger.error("Index value out of list.")
+                        
                     # filter todos
-                    list['todos'][list['todos'].index(helper.filter_tomorrow(list['todos'])[index - 1])]['text'] = text
+                    old = helper.filter_tomorrow(list['todos'])[index - 1]
+                    old_text = old['text']
+                    list['todos'][list['todos'].index(old)]['text'] = text
 
             # write to file
             with open(settings['path'] + '/all.todo', 'w') as file:
-                file.write(json.dumps(list))
+                json.dump(list, file)
+                                    
+            # print the list
+            match list_name:
+                case 'all':
+                    logger.print_list(list['todos'], name=list_name, update=(old_text, text))
+
+                case 'today':
+                    logger.print_list(helper.filter_today(list['todos']), name=list_name, update=(old_text, text))
+
+                case 'tomorrow':
+                    logger.print_list(helper.filter_tomorrow(list['todos']), name=list_name, update=(old_text, text))
 
         case 'local':
-            pass
+            # check if file exists
+            if not os.path.isfile('local.todo'):
+                logger.error('Local list is not set up yet. \nCreate it by running \'todo create local\'')
+
+            # read from file
+            with open('local.todo', 'r') as file:
+                list = json.load(file)
+
+            # update the todo
+            old_text = list['todos'][index - 1]['text']
+            list['todos'][index - 1]['text'] = text
+
+            # write to file
+            with open('local.todo', 'w') as file:
+                json.dump(list, file)
+                                    
+            # print the list
+            logger.print_list(list['todos'], name=list_name, update=(old_text, text))
 
         case _:
             pass
@@ -358,9 +466,7 @@ def update(list_name: str, index: int, text: str):
 # REMOVE
 def remove(list_name: str, index: int):
     if not settings:
-        print('Todo list is not set up yet.')
-        print('Initialize it by running \'todo setup\'')
-        return
+        logger.error('Todo list is not set up yet.\n Initialize it by running \'todo setup\'')
 
     if index <= 0:
         logger.error("Index value must be positive.")
@@ -369,9 +475,7 @@ def remove(list_name: str, index: int):
         case 'all' | 'today' | 'tomorrow':
             # check if file exists
             if not os.path.isfile(settings['path'] + '/all.todo'):
-                print('List \'all\' is not set up yet.')
-                print('Initialize it by running \'todo setup\'')
-                return
+                logger.error('List \'all\' is not set up yet. \nInitialize it by running \'todo setup\'')
 
             # read from file
             with open(settings['path'] + '/all.todo', 'r') as file:
@@ -398,14 +502,46 @@ def remove(list_name: str, index: int):
                     index = list['todos'].index(helper.filter_tomorrow(list['todos'])[index - 1])
 
             # remove item
-            list['todos'].pop(index)
+            removed = list['todos'].pop(index)['text']
 
             # write to file
             with open(settings['path'] + '/all.todo', 'w') as file:
-                file.write(json.dumps(list))
+                json.dump(list, file)
+
+            # print the list
+            match list_name:
+                case 'all':
+                    logger.print_list(list['todos'], name=list_name, remove=removed)
+
+                case 'today':
+                    logger.print_list(helper.filter_today(list['todos']), name=list_name, remove=removed)
+
+                case 'tomorrow':
+                    logger.print_list(helper.filter_tomorrow(list['todos']), name=list_name, remove=removed)
 
         case 'local':
-            pass
+            # check if file exists
+            if not os.path.isfile('local.todo'):
+                logger.error('List \'all\' is not set up yet. \nInitialize it by running \'todo setup\'')
+
+            # read from file
+            with open('local.todo', 'r') as file:
+                list = json.load(file)
+
+            # check if index is valid
+            if len(list['todos']) < index:
+                logger.error("Index value out of list.")
+
+            # remove item
+            removed = list['todos'].pop(index - 1)['text']
+
+            # write to file
+            with open('local.todo', 'w') as file:
+                json.dump(list, file)
+
+            # print the list
+            logger.print_list(list['todos'], name=list_name, remove=removed)
+
 
         case _:
             pass
@@ -523,7 +659,7 @@ def old_main():
             else:
                 config['mode'] = mode
                 with open(paths['config'], 'w') as file:
-                    file.write(json.dumps(config))
+                    json.dump(config, file)
 
                 print_list('mode', {
                     'mode': mode
@@ -568,7 +704,7 @@ def old_main():
             exit(1)
 
 # create
-def create(mode, name=None):
+def old_create(mode, name=None):
     path = paths[mode]
 
     if mode == 'remote':
@@ -592,7 +728,7 @@ def create(mode, name=None):
                 paths['local']
 
         with open(paths['main'], 'w') as file:
-            file.write(json.dumps(main))
+            json.dumps(main, file)
 
     else:
         data = {
@@ -603,7 +739,7 @@ def create(mode, name=None):
 
     # write to file
     with open(path, 'w') as file:
-        file.write(json.dumps(data))
+        json.dumps(data, file)
 
     return data
 
