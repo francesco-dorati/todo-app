@@ -42,13 +42,13 @@ def main():
         case ['setup']:
             setup()
 
-        # create list
-        case ['create', 'list' | 'section' as type, list_name]:
-            create(type, name)
-
         # create local list
         case ['create', 'local']:
             create('local')
+
+        # create list
+        case ['create', 'list' | 'section' as type, list_name]:
+            create(type, name)
 
         # rename
         case ['rename', list_name, new_list_name]:
@@ -66,23 +66,35 @@ def main():
         case [list_name, 'a' | 'add', text]:
             add(list_name, text.strip())
 
+        # add child
+        case [list_name, index, 'a' | 'add', text]:
+            add_child(list_name, int(index), text)
+
         # update
         case [list_name, 'u' | 'update', index, text]:
-
+            # TODO check if index is a number
             update(list_name, int(index), text.strip())
 
         # remove
         case [list_name, 'r' | 'remove', index]:
-            remove(list_name, int(index))
+            # check if index is integer
+            if index.isdigit():
+                remove(list_name, int(index))
+            else:
+                index, child_index = index.split('.')
+                remove_child(list_name, int(index), int(child_index))
         
+        # order
         case [list_name, 'o' | 'order', index, destination]:
             order(list_name, int(index), int(destination))
-
+        
+        case _:
+            logger.error('Wrong Command')
 
 # todo projects create todo-app
 # todo projects todo-app add
 
-
+# SHELL
 def shell():
     current_list = 'all'
     logger.clear_screen()
@@ -134,9 +146,8 @@ def shell():
                 current_list = list_name
                 logger.clear_screen()
                 remove(list_name, int(index))
-            
-
-
+        
+# SETUP
 def setup():
     # ask for mode
     while True:
@@ -331,7 +342,8 @@ def add(list_name: str, text: str):
             list['todos'].append({
                 'text': text,
                 'time': str(datetime.datetime.now()),
-                'expiration': expiration
+                'expiration': expiration,
+                'children': []
             })
 
             # write to file
@@ -363,6 +375,7 @@ def add(list_name: str, text: str):
             list['todos'].append({
                 'text': text,
                 'time': str(datetime.datetime.now()),
+                'children': []
             })
 
             # write to file
@@ -638,6 +651,200 @@ def order(list_name: str, index: int, destination: int):
 
             # print the list
             logger.print_list(list['todos'], name=list_name, order=(item['text'], index, destination))
+
+# ADD CHILD
+def add_child(list_name: str, index: int, text: str):
+    if not settings:
+        logger.error('Todo list is not set up yet.\n Initialize it by running \'todo setup\'')
+    
+    if index <= 0:
+        logger.error("Index value must be positive.")
+
+    match list_name:
+        # all, today and tomorrow
+        case 'all' | 'today' | 'tomorrow':
+            # check if file exists
+            if not os.path.isfile(settings['path'] + '/all.todo'):
+                logger.error('List \'all\' is not set up yet. Initialize it by running \'todo setup\'')
+
+            # read from file
+            with open(settings['path'] + '/all.todo', 'r') as file:
+                list = json.load(file)
+            
+            # remove the todo
+            match list_name:
+                case 'all':
+                    # check if index is valid
+                    if len(list['todos']) < index:
+                        logger.error("Index value out of list.")
+                    relative_index = index - 1
+
+                case 'today':
+                    # check if index is valid
+                    if len(helper.filter_today(list['todos'])) < index: 
+                        logger.error("Index value out of list.")
+                    relative_index = list['todos'].index(helper.filter_today(list['todos'])[index - 1])
+
+                case 'tomorrow':
+                    # check if index is valid
+                    if len(helper.filter_tomorrow(list['todos'])) < index: 
+                        logger.error("Index value out of list.")
+                    relative_index = list['todos'].index(helper.filter_tomorrow(list['todos'])[index - 1])
+
+            # store parent
+            parent = list['todos'][relative_index]['text']
+
+            # add to all with expiration tomorrow
+            list['todos'][relative_index]['children'].append({
+                'text': text,
+                'time': str(datetime.datetime.now()),
+            })
+
+            # write to file
+            with open(settings['path'] + '/all.todo', 'w') as file:
+                json.dump(list, file)
+            
+            # print the list
+            match list_name:
+                case 'all':
+                    logger.print_list(list['todos'], name=list_name, add_child=(text, parent))
+
+                case 'today':
+                    logger.print_list(helper.filter_today(list['todos']), name=list_name, add_child=(text, parent))
+
+                case 'tomorrow':
+                    logger.print_list(helper.filter_tomorrow(list['todos']), name=list_name, add_child=(text, parent))
+
+
+        case 'local':
+            # check if file exists
+            if not os.path.isfile('local.todo'):
+                logger.error('List \"local\" is not set up yet. \nCreate it by running \'todo create local\'')
+
+            # read from file
+            with open('local.todo', 'r') as file:
+                list = json.load(file)
+
+            # check if index is valid
+            if len(list['todos']) < index:
+                logger.error("Index value out of list.")
+            
+            # store parent
+            parent = list['todos'][index - 1]['text']
+
+            # add to all with expiration tomorrow
+            list['todos'][index - 1]['children'].append({
+                'text': text,
+                'time': str(datetime.datetime.now()),
+            })
+
+            # write to file
+            with open('local.todo', 'w') as file:
+                json.dump(list, file)
+            
+            # print the list
+            logger.print_list(list['todos'], name=list_name, add=text)
+
+        case name if name in []:
+            # add to list_name without expiration
+            pass
+
+        case _:
+            # wrong list name
+            pass
+
+    pass
+
+# REMOVE CHILD
+def remove_child(list_name: str, index: int, child_index: int):
+    if not settings:
+        logger.error('Todo list is not set up yet. \nInitialize it by running \'todo setup\'')
+
+    if index <= 0 or child_index <= 0:
+        logger.error("Index value must be positive.")
+
+    match list_name:
+        case 'all' | 'today' | 'tomorrow':
+            # check if file exists
+            if not os.path.isfile(settings['path'] + '/all.todo'):
+                logger.error('List \'all\' is not set up yet. \nInitialize it by running \'todo setup\'')
+
+            # read from file
+            with open(settings['path'] + '/all.todo', 'r') as file:
+                list = json.load(file)
+        
+            # calculate relative index
+            match list_name:
+                case 'all':
+                    # check if index is valid
+                    if len(list['todos']) < index:
+                        logger.error("Index value out of list.")
+                    relative_index = index - 1
+
+                case 'today':
+                    # check if index is valid
+                    if len(helper.filter_today(list['todos'])) < index: 
+                        logger.error("Index value out of list.")
+                    relative_index = list['todos'].index(helper.filter_today(list['todos'])[index - 1])
+
+                case 'tomorrow':
+                    # check if index is valid
+                    if len(helper.filter_tomorrow(list['todos'])) < index: 
+                        logger.error("Index value out of list.")
+                    relative_index = list['todos'].index(helper.filter_tomorrow(list['todos'])[index - 1])
+
+            # get parent
+            parent = list['todos'][relative_index]['text'] 
+
+            # remove item
+            removed = list['todos'][relative_index]['children'].pop(child_index - 1)['text']
+
+            # write to file
+            with open(settings['path'] + '/all.todo', 'w') as file:
+                json.dump(list, file)
+
+            # print the list
+            match list_name:
+                case 'all':
+                    logger.print_list(list['todos'], name=list_name, remove_child=(removed, parent))
+
+                case 'today':
+                    logger.print_list(helper.filter_today(list['todos']), name=list_name, remove_child=(removed, parent))
+
+                case 'tomorrow':
+                    logger.print_list(helper.filter_tomorrow(list['todos']), name=list_name, remove_child=(removed, parent))
+
+        case 'local':
+            # check if file exists
+            if not os.path.isfile('local.todo'):
+                logger.error('List \'local\' is not set up yet. \nInitialize it by running \'todo create local\'')
+
+            # read from file
+            with open('local.todo', 'r') as file:
+                list = json.load(file)
+
+            # check if index is valid
+            if len(list['todos']) < index:
+                logger.error("Index value out of list.")
+
+            # get parent
+            parent = list['todos'][index - 1]['text'] 
+
+            # remove item
+            removed = list['todos'][index - 1]['children'].pop(child_index - 1)['text']
+
+            # write to file
+            with open('local.todo', 'w') as file:
+                json.dump(list, file)
+
+            # print the list
+            logger.print_list(list['todos'], name=list_name, remove_child=(removed, parent))
+
+
+        case _:
+            pass
+    
+
 
 # ---
 
