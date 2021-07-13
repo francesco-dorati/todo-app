@@ -1,7 +1,33 @@
-import helper 
+# import 
 
 def print_help():
-  pass
+  print("""
+NAME:
+   todo-app - Todo app CLI
+
+USAGE:
+   todo [list name] [command] [arguments...]
+
+# VERSION:
+#   0.15.0
+
+LISTS:
+    all           Main list (todo-app/.todo/all.todo)
+    today         Computed today list stored inside list "all" (todo-app/.todo/all.todo)
+    tomorrow      Computed tomorrow list stored inside list "all" (todo-app/.todo/all.todo)
+    local         Local todo list stored in local folder (./local.todo)
+
+COMMANDS: 
+    todo                                  Open todo terminal
+    todo setup                            Setup list
+    todo [list]                           Print list
+    ... a, add [text]                     Add todo
+    ... [index] a, add [text]             Add todo as a child of another
+    ... u, update [index] [text]          Update todo to a new text
+    ... m, move [index] [destination]     Move todo
+    ... r, remove [index]                 Remove todo
+    ... h, help                           Show help
+  """)
 
 def clear_screen():
     import os
@@ -17,9 +43,7 @@ def print_list(
               add: str = None, 
               update: tuple[str, str] = None, 
               remove: str = None, 
-              order: tuple[str, int, int] = None,
-              add_child: tuple[str, str] = None,
-              remove_child: tuple[str, str] = None,
+              move: tuple[str, int, int] = None,
               ):
   print()
 
@@ -32,25 +56,18 @@ def print_list(
   elif remove:
     print(f"Removed \"{remove}\" successfully from {name}.\n")
 
-  elif order:
-    print(f'Moved \"{order[0]}\" from position {order[1]} to position {order[2]}.\n')
+  elif move:
+    print(f'Moved \"{move[0]}\" from position {move[1]} to position {move[2]}.\n')
 
-  elif add_child:
-    print(f'Added \"{add_child[0]}\" successfully as a child of {add_child[1]} to {name}.\n')
-
-  elif remove_child:
-    print(f'Removed \"{remove_child[0]}\" successfully from \"{remove_child[1]}\" in {name}.\n')
-  
   if list:
-    print(f"{name} list:")
+    print(f"\"{name}\" list:")
     for index, todo in enumerate(list):
       print(f"[{index + 1}] {todo['text']}")
       if todo['children']:
         for child_index, child in enumerate(todo['children']):
           print(f"\t[{index + 1}.{child_index + 1}] {child['text']}")
-      #print(f"{todo['expiration']} {helper.is_today(todo['expiration'])}")
   else:
-    print(f"{name} list is empty.")
+    print(f"\"{name}\" list is empty.")
   
   print()
 
