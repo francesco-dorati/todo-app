@@ -10,75 +10,85 @@ import helper
 import logger
 import storage
 
-"""
-lists/sections:
-- today
-- tomorrow
-- this week
-- next week
 
-- local
-- <other>
-"""
-
-base_path = '/'.join(os.path.realpath(__file__).split('/')[:-1]) + '/'
-settings_path = base_path + 'settings.json'
-
+BASE_PATH = '/'.join(os.path.realpath(__file__).split('/')[:-1]) + '/'
+SETTINGS_PATH = BASE_PATH + 'settings.json'
 
 # load settings
 settings = None
-if os.path.isfile(settings_path):
-    with open(settings_path, 'r') as file:
-        settings = json.load(file)
+if os.path.isfile(SETTINGS_PATH):
+    settings = storage.load(SETTINGS_PATH)
 
 
 def main():
     match sys.argv[1:]:
         # shell
-        case []:
+        case[]:
             shell()
-        
+
         # setup
-        case ['setup']:
+        case['setup']:
             setup()
 
         # create local list
-        case ['create', 'local']:
+        case['create', 'local']:
             create('local')
 
         # create list
-        case ['create', 'list' | 'section' as type, list_name]:
+        case['create', 'list' | 'section' as type, list_name]:
             create(type, name)
 
         # rename
-        case ['rename', list_name, new_list_name]:
+        case['rename', list_name, new_list_name]:
             pass
 
         # help
-        case ['h' | 'help']:
+        case['h' | 'help']:
             logger.print_help()
             exit()
 
-        # get
-        case [list_name] if list_name in ['all', 'today', 'tomorrow', 'local']:
-            get(list_name)
-
         # add
-        case [list_name, *index, 'a' | 'add', text] if list_name in ['all', 'today', 'tomorrow', 'local']:
-            add(list_name, text.strip(), index=int(index[0]) if index else None)
+        case[list_name, 'a' | 'add', text, *args] if list_name in ['all', 'local']:
+            deadline, position = None, None
+            # load args
+            if args:
+                for index, arg in enumerate(args):
+                    match arg:
+                        # deadline
+                        case 'd' | 'due':
+                            deadline = args[index + 1]
+                            if not deadline in ['today', 'tomorrow']:
+                                logger.error('Deadline not available.')
+
+                        # position
+                        case 'p' | 'position':
+                            position = args[index + 1]
+            add(list_name, text.strip(), deadline, position)
 
         # update
-        case [list_name, 'u' | 'update', index, text] if list_name in ['all', 'today', 'tomorrow', 'local']:
-            update(list_name, int(index), text.strip())
+        case[list_name, 'u' | 'update', index, text] if list_name in ['all', 'local']:
+            update(list_name, index, text.strip())
 
         # remove
-        case [list_name, 'r' | 'remove', index] if list_name in ['all', 'today', 'tomorrow', 'local']:
+        case[list_name, 'r' | 'remove', index] if list_name in ['all', 'local']:
             remove(list_name, index)
-        
+
         # move
-        case [list_name, 'm' | 'move', index, destination] if list_name in ['all', 'today', 'tomorrow', 'local']:
+        case[list_name, 'm' | 'move', index, destination] if list_name in ['all', 'local']:
             move(list_name, int(index), int(destination))
-        
+
+        # get
+        case[list_name, *args] if list_name in ['all', 'local']:
+            deadline = None
+            if args and len(args) == 2:
+                match args[0]:
+                    # deadline
+                    case 'd' | 'due':
+                        deadline = args[1]
+                        if not deadline in ['today', 'tomorrow']:
+                            logger.error('Deadline not available.')
+            get(list_name, deadline=deadline)
+
         case _:
             logger.error('Wrong Command')
 
@@ -95,49 +105,49 @@ def shell():
         command = input("\n> ").split()
         match command:
             # exit
-            case ['exit']:
+            case['exit']:
                 logger.clear_screen()
                 exit()
 
             # current add
-            case ['a' | 'add', text]:
+            case['a' | 'add', text]:
                 logger.clear_screen()
                 add(current_list, text.strip())
 
             # current update
-            case ['u' | 'update', index, text]:
+            case['u' | 'update', index, text]:
                 logger.clear_screen()
                 update(current_list, int(index), text.strip())
 
             # current remove
-            case ['r' | 'remove', index]:
+            case['r' | 'remove', index]:
                 logger.clear_screen()
                 remove(current_list, int(index))
-            
+
             # list get
-            case [list_name]:
+            case[list_name]:
                 current_list = list_name
                 logger.clear_screen()
                 get(current_list)
 
             # list add
-            case [list_name, 'a' | 'add', text]:
+            case[list_name, 'a' | 'add', text]:
                 current_list = list_name
                 logger.clear_screen()
                 add(list_name, text.strip())
 
             # list update
-            case [list_name, 'u' | 'update', index, text]:
+            case[list_name, 'u' | 'update', index, text]:
                 current_list = list_name
                 logger.clear_screen()
                 update(list_name, int(index), text.strip())
 
             # list remove
-            case [list_name, 'r' | 'remove', index]:
+            case[list_name, 'r' | 'remove', index]:
                 current_list = list_name
                 logger.clear_screen()
                 remove(list_name, int(index))
-        
+
 # SETUP
 def setup():
     # ask for mode
@@ -149,38 +159,39 @@ def setup():
         elif mode == '2':
             mode = 'remote'
             break
-    
+
     # local
     if mode == 'local':
         # ask for path
         while True:
             path = input("Path for todo folder (Enter for default): ")
-            if path == '': # default
-                path = base_path
+            if path == '':  # default
+                path = BASE_PATH
                 break
             elif os.path.isdir(path):
                 path = path.strip('/') + '/'
                 break
-        
+
         print('Creating files...')
 
         # create settings file
-        storage.write(settings_path, {
-                'mode': 'local',
-                'path': path + '.todo'
-            })
+        storage.write(SETTINGS_PATH, {
+            'mode': 'local',
+            'path': path + '.todo'
+        })
 
         # check if folder already exists
         if os.path.isfile(path + '.todo/all.todo'):
             while True:
-                a = input('A todo folder already exists. Do you want to overwrite it [y/N]? ').lower()
+                a = input(
+                    'A todo folder already exists. Do you want to overwrite it [y/N]? ').lower()
                 # overwrite
                 if a == 'y' or a == 'yes':
                     print("Overwriting files...")
                     storage.write(path + '.todo/all.todo', {
-                            'name': 'all',
-                            'todos': [],
-                        })
+                        'name': 'all',
+                        'todos': [],
+                    })
                     break
 
                 # do not overwrite
@@ -194,10 +205,10 @@ def setup():
 
             # create list all
             storage.write(path + '.todo/all.todo', {
-                    'name': 'all',
-                    'todos': [],
-                })
-        
+                'name': 'all',
+                'todos': [],
+            })
+
         print("Done.")
 
     # remote
@@ -211,15 +222,15 @@ def setup():
                 break
             else:
                 print('Server not responding, provide another address.')
-        
+
         print('Creating files...')
 
         # create settings file
-        storage.write(settings_path, {
-                'mode': 'remote',
-                'path': path,
-            })
-        
+        storage.write(SETTINGS_PATH, {
+            'mode': 'remote',
+            'path': path,
+        })
+
         print("Done.")
 
 # CREATE
@@ -228,10 +239,12 @@ def create(type: str, name: str = None):
         case 'list':
             if not name:
                 logger.error("List name is required.")
+                # todo
 
         case 'section':
             if not name:
                 logger.error("List name is required.")
+                # todo
 
         case 'local':
             if not name:
@@ -240,7 +253,8 @@ def create(type: str, name: str = None):
             # check if local file exists
             if os.path.isfile('local.todo'):
                 while True:
-                    a = input('A local todo list already exists. Do you want to overwrite it [y/N]? ').lower()
+                    a = input(
+                        'A local todo list already exists. Do you want to overwrite it [y/N]? ').lower()
                     # do not overwrite
                     if a == 'n' or a == 'no' or a == '':
                         exit()
@@ -248,195 +262,153 @@ def create(type: str, name: str = None):
                     # overwrite
                     elif a == 'y' or a == 'yes':
                         break
-            
+
             # create file
             storage.write('local.todo', {
-                    'name': name,
-                    'todos': []
-                })
-            
+                'name': name,
+                'todos': []
+            })
+
             print(f"Created new local list \"{name}\" successfully.")
-       
+
 # GET
-def get(list_name: str):
+def get(list_name: str, deadline: str = None):
     if not settings:
-        logger.error('Todo list is not set up yet.\n Initialize it by running \'todo setup\'')
-    
+        logger.error(
+            'Todo list is not set up yet.\n Initialize it by running \'todo setup\'')
+
+    # calculate list path
     match list_name:
-        case 'all' | 'today' | 'tomorrow':
-            # load list from file
-            list = storage.load(settings['path'] + '/all.todo')
-
-            # check if file exists
-            if not list:
-                logger.error('List \'all\' is not set up yet.\nInitialize it by running \'todo setup\'')
-            
-            # print the list
-            match list_name:
-                case 'all':
-                    logger.print_list(list['todos'], name=list_name)
-
-                case 'today':
-                    logger.print_list(helper.filter_today(list['todos']), name=list_name)
-
-                case 'tomorrow':
-                    logger.print_list(helper.filter_tomorrow(list['todos']), name=list_name)
-
+        case 'all':
+            path = settings['path'] + '/all.todo'
         case 'local':
-            # load list from file
-            list = storage.load('local.todo')
-
-            # check if file exists
-            if not list:
-                logger.error('List \"local\" is not set up yet. \nCreate it by running \'todo create local\'')
-            
-            # print the list
-            logger.print_list(list['todos'], name=list_name)
-
+            path = 'local.todo'
         case name if name in []:
-            # add to list_name without expiration
-            pass
-
-
+            path = ''
         case _:
-            # wrong list name
-            pass
+            logger.error("Inexisent list name.")
+
+    # load file
+    list = storage.load(path)
+
+    # check if file exists
+    if not list:
+        logger.error(
+            f'List \'{list["name"]}\' is not set up yet. Initialize it by running \'todo setup\'')
+
+    # filter list by deadline
+    helper.filter(list, deadline)
+
+    # print the list
+    logger.print_list(list)
 
 # ADD
-def add(list_name: str, text: str, index: int = None):
+def add(list_name: str, text: str, deadline: str = None, position: str = None):
     if not settings:
-        logger.error('Todo list is not set up yet.\n Initialize it by running \'todo setup\'')
+        logger.error(
+            'Todo list is not set up yet.\n Initialize it by running \'todo setup\'')
 
-    if index and index < 1:
-        logger.error("Index value must be positive.")
-
+    # calculate list path
     match list_name:
-        # all, today and tomorrow
+        case 'all':
+            path = settings['path'] + '/all.todo'
+        case 'local':
+            path = 'local.todo'
+        case name if name in []:
+            path = ''
+        case _:
+            logger.error("Inexisent list name.")
+
+    # load file
+    list = storage.load(path)
+
+    # check if file exists
+    if not list:
+        logger.error(
+            f'List \'{list["name"]}\' is not set up yet. Initialize it by running \'todo setup\'')
+
+    # build the todo
+    todo = {
+        'text': text,
+        'time': str(datetime.datetime.now()),
+        'deadline': str(helper.calculate_date(deadline)) if deadline else None,
+        'children': []
+    }
+
+    # calculate index
+    if position:
+        # unpack indexes
+        try:
+            index_list = [int(i) - 1 for i in position.split(".")]
+        except ValueError:
+            logger.error("Invalid index.")
+
+        # validate indexes
+        current = list['todos']
+        last_index = len(index_list) - 1
+        for i, index in enumerate(index_list):
+            # index out of range
+            if index < 0:
+                logger.error("Invalid index.")
+
+            # index out of range
+            if index >= len(current) and i != last_index:
+                    logger.error("Invalid index.")
+            
+            # if last index
+            if i == last_index:
+                current.insert(index, todo)
+                break
+
+            # next child
+            current = current[index]['children']
+
+    # no position
+    else:
+        # insert the todo
+        list['todos'].append(todo)
+
+    # write to file
+    storage.write(path, list)
+
+    # print the list
+    logger.print_list(list, add=text)
+
+# UPDATE
+def update(list_name: str, index: str, text: str):
+    if not settings:
+        logger.error(
+            'Todo list is not set up yet.\n Initialize it by running \'todo setup\'')
+
+    # calculate list path
+    match list_name:
+        case 'all':
+            path = settings['path'] + '/all.todo'
+        case 'local':
+            path = 'local.todo'
+        case name if name in []:
+            path = ''
+        case _:
+            logger.error("Inexisent list name.")
+
+    # load file
+    list = storage.load(path)
+    
+    # check if file exists
+    if not list:
+        logger.error(
+            f'List \'{list["name"]}\' is not set up yet. Initialize it by running \'todo setup\'')
+
+###########
+    match list_name:
         case 'all' | 'today' | 'tomorrow':
             # load file
             list = storage.load(settings['path'] + '/all.todo')
-
-            # check if file exists 
-            if not list:
-                logger.error('List \'all\' is not set up yet. Initialize it by running \'todo setup\'')
-
-            # as a todo
-            if not index:
-                # calculate expiration
-                match list_name:
-                    case 'all':
-                        expiration = None
-                    case 'today':
-                        expiration = str(helper.today())
-                    case 'tomorrow':
-                        expiration = str(helper.tomorrow())
-
-                # add to all with expiration tomorrow
-                list['todos'].append({
-                    'text': text,
-                    'time': str(datetime.datetime.now()),
-                    'expiration': expiration,
-                    'children': []
-                })
-
-            # as a child
-            else:
-                match list_name:
-                    case 'all':
-                        # check if index is valid
-                        if len(list['todos']) < index:
-                            logger.error("Index value out of list.")
-                        relative_index = index - 1
-
-                    case 'today':
-                        # check if index is valid
-                        if len(helper.filter_today(list['todos'])) < index: 
-                            logger.error("Index value out of list.")
-                        relative_index = list['todos'].index(helper.filter_today(list['todos'])[index - 1])
-
-                    case 'tomorrow':
-                        # check if index is valid
-                        if len(helper.filter_tomorrow(list['todos'])) < index: 
-                            logger.error("Index value out of list.")
-                        relative_index = list['todos'].index(helper.filter_tomorrow(list['todos'])[index - 1])
-            
-                # add to the specified todo as a child
-                list['todos'][relative_index]['children'].append({
-                    'text': text,
-                    'time': str(datetime.datetime.now()),
-                })
-
-            # write to file
-            storage.write(settings['path'] + '/all.todo', list)
-            
-            # print the list
-            match list_name:
-                case 'all':
-                    logger.print_list(list['todos'], name=list_name, add=text)
-
-                case 'today':
-                    logger.print_list(helper.filter_today(list['todos']), name=list_name, add=text)
-
-                case 'tomorrow':
-                    logger.print_list(helper.filter_tomorrow(list['todos']), name=list_name, add=text)
-
-
-        case 'local':
-            # load list from file
-            list = storage.load('local.todo')
 
             # check if file exists
             if not list:
-                logger.error('List \"local\" is not set up yet. \nCreate it by running \'todo create local\'')
-        
-            # add a todo 
-            if not index:
-                # add to all with expiration tomorrow
-                list['todos'].append({
-                    'text': text,
-                    'time': str(datetime.datetime.now()),
-                    'children': []
-                })
-
-            # add a child
-            else:
-                # check if index is valid
-                if len(list['todos']) < index:
-                    logger.error("Index value out of list.")
-
-                # add to all with expiration tomorrow
-                list['todos'][index - 1]['children'].append({
-                    'text': text,
-                    'time': str(datetime.datetime.now()),
-                })
-
-            # write to file
-            storage.write('local.todo', list)
-            
-            # print the list
-            logger.print_list(list['todos'], name=list_name, add=text)
-
-        case name if name in []:
-            # add to list_name without expiration
-            pass
-
-        case _:
-            # wrong list name
-            pass
-
-# UPDATE
-def update(list_name: str, index: int, text: str):
-    if not settings:
-        logger.error('Todo list is not set up yet.\n Initialize it by running \'todo setup\'')
-
-    match list_name:
-        case 'all' | 'today' | 'tomorrow':
-            # load file
-            list = storage.load(settings['path'] + '/all.todo')
-
-            # check if file exists 
-            if not list:
-                logger.error('List \'all\' is not set up yet. Initialize it by running \'todo setup\'')
+                logger.error(
+                    'List \'all\' is not set up yet. Initialize it by running \'todo setup\'')
 
             match list_name:
                 case 'all':
@@ -450,7 +422,7 @@ def update(list_name: str, index: int, text: str):
 
                 case 'today':
                     # check if index is valid
-                    if len(helper.filter_today(list['todos'])) < index: 
+                    if len(helper.filter_today(list['todos'])) < index:
                         logger.error("Index value out of list.")
 
                     # filter todos
@@ -460,9 +432,9 @@ def update(list_name: str, index: int, text: str):
 
                 case 'tomorrow':
                     # check if index is valid
-                    if len(helper.filter_tomorrow(list['todos'])) < index: 
+                    if len(helper.filter_tomorrow(list['todos'])) < index:
                         logger.error("Index value out of list.")
-                        
+
                     # filter todos
                     old = helper.filter_tomorrow(list['todos'])[index - 1]
                     old_text = old['text']
@@ -470,25 +442,29 @@ def update(list_name: str, index: int, text: str):
 
             # write to file
             storage.write(settings['path'] + '/all.todo', list)
-                                    
+
             # print the list
             match list_name:
                 case 'all':
-                    logger.print_list(list['todos'], name=list_name, update=(old_text, text))
+                    logger.print_list(
+                        list['todos'], name=list_name, update=(old_text, text))
 
                 case 'today':
-                    logger.print_list(helper.filter_today(list['todos']), name=list_name, update=(old_text, text))
+                    logger.print_list(helper.filter_today(
+                        list['todos']), name=list_name, update=(old_text, text))
 
                 case 'tomorrow':
-                    logger.print_list(helper.filter_tomorrow(list['todos']), name=list_name, update=(old_text, text))
+                    logger.print_list(helper.filter_tomorrow(
+                        list['todos']), name=list_name, update=(old_text, text))
 
         case 'local':
             # load file
             list = storage.load('local.todo')
 
-            # check if file exists 
+            # check if file exists
             if not list:
-                logger.error('List \'local\' is not set up yet. Initialize it by running \'todo create local\'')
+                logger.error(
+                    'List \'local\' is not set up yet. Initialize it by running \'todo create local\'')
 
             # update the todo
             old_text = list['todos'][index - 1]['text']
@@ -496,9 +472,10 @@ def update(list_name: str, index: int, text: str):
 
             # write to file
             storage.write('local.todo', list)
-                                    
+
             # print the list
-            logger.print_list(list['todos'], name=list_name, update=(old_text, text))
+            logger.print_list(
+                list['todos'], name=list_name, update=(old_text, text))
 
         case _:
             pass
@@ -506,26 +483,28 @@ def update(list_name: str, index: int, text: str):
 # REMOVE
 def remove(list_name: str, index: str):
     if not settings:
-        logger.error('Todo list is not set up yet.\n Initialize it by running \'todo setup\'')
-    
+        logger.error(
+            'Todo list is not set up yet.\n Initialize it by running \'todo setup\'')
+
     # unpack the indexes
     try:
         index_list = [int(i) - 1 for i in index.split(".")]
     except ValueError:
         logger.error("Invalid index.")
-    
+
     # check if all indexes are positive
     if any(i < 0 for i in index_list):
         logger.error("Index value must be positive.")
-    
+
     match list_name:
         case 'all' | 'today' | 'tomorrow':
             # load file
             list = storage.load(settings['path'] + '/all.todo')
 
-            # check if file exists 
+            # check if file exists
             if not list:
-                logger.error('List \'all\' is not set up yet. Initialize it by running \'todo setup\'')
+                logger.error(
+                    'List \'all\' is not set up yet. Initialize it by running \'todo setup\'')
 
             # remove the todo
             match list_name:
@@ -536,21 +515,24 @@ def remove(list_name: str, index: str):
 
                 case 'today':
                     # check if index is valid
-                    if len(helper.filter_today(list['todos'])) <= index_list[0]: 
+                    if len(helper.filter_today(list['todos'])) <= index_list[0]:
                         logger.error("Index value out of list.")
-                    index_list[0] = list['todos'].index(helper.filter_today(list['todos'])[index - 1])
+                    index_list[0] = list['todos'].index(
+                        helper.filter_today(list['todos'])[index - 1])
 
                 case 'tomorrow':
                     # check if index is valid
-                    if len(helper.filter_tomorrow(list['todos'])) <= index_list[0]: 
+                    if len(helper.filter_tomorrow(list['todos'])) <= index_list[0]:
                         logger.error("Index value out of list.")
-                    index_list[0] = list['todos'].index(helper.filter_tomorrow(list['todos'])[index - 1])
+                    index_list[0] = list['todos'].index(
+                        helper.filter_tomorrow(list['todos'])[index - 1])
 
             # remove item
             if len(index_list) == 1:
                 removed = list['todos'].pop(index_list[0])['text']
             else:
-                removed = list['todos'][index_list[0]]['children'].pop(index_list[1])['text']
+                removed = list['todos'][index_list[0]]['children'].pop(index_list[1])[
+                    'text']
 
             # write to file
             storage.write(settings['path'] + '/all.todo', list)
@@ -558,31 +540,36 @@ def remove(list_name: str, index: str):
             # print the list
             match list_name:
                 case 'all':
-                    logger.print_list(list['todos'], name=list_name, remove=removed)
+                    logger.print_list(
+                        list['todos'], name=list_name, remove=removed)
 
                 case 'today':
-                    logger.print_list(helper.filter_today(list['todos']), name=list_name, remove=removed)
+                    logger.print_list(helper.filter_today(
+                        list['todos']), name=list_name, remove=removed)
 
                 case 'tomorrow':
-                    logger.print_list(helper.filter_tomorrow(list['todos']), name=list_name, remove=removed)
+                    logger.print_list(helper.filter_tomorrow(
+                        list['todos']), name=list_name, remove=removed)
 
         case 'local':
             # load file
             list = storage.load('local.todo')
 
-            # check if file exists 
+            # check if file exists
             if not list:
-                logger.error('List \'local\' is not set up yet. Initialize it by running \'todo create local\'')
+                logger.error(
+                    'List \'local\' is not set up yet. Initialize it by running \'todo create local\'')
 
             # check if index is valid
             if len(list['todos']) <= index_list[0]:
                 logger.error("Index value out of list.")
-            
+
             # remove item
             if len(index_list) == 1:
                 removed = list['todos'].pop(index_list[0])['text']
             else:
-                removed = list['todos'][index_list[0]]['children'].pop(index_list[1])['text']
+                removed = list['todos'][index_list[0]]['children'].pop(index_list[1])[
+                    'text']
 
             # write to file
             storage.write('local.todo', list)
@@ -590,26 +577,27 @@ def remove(list_name: str, index: str):
             # print the list
             logger.print_list(list['todos'], name=list_name, remove=removed)
 
-
         case _:
             pass
 
 # MOVE
 def move(list_name: str, index: int, destination: int):
     if not settings:
-        logger.error('Todo list is not set up yet.\n Initialize it by running \'todo setup\'')
+        logger.error(
+            'Todo list is not set up yet.\n Initialize it by running \'todo setup\'')
 
     if index < 1 or destination <= 0:
-        logger.error("Index value must be positive.") 
+        logger.error("Index value must be positive.")
 
     match list_name:
         case 'all' | 'today' | 'tomorrow':
             # load file
             list = storage.load(settings['path'] + '/all.todo')
 
-            # check if file exists 
+            # check if file exists
             if not list:
-                logger.error('List \'all\' is not set up yet. Initialize it by running \'todo setup\'')
+                logger.error(
+                    'List \'all\' is not set up yet. Initialize it by running \'todo setup\'')
 
             match list_name:
                 case 'all':
@@ -623,26 +611,27 @@ def move(list_name: str, index: int, destination: int):
                     # check if index is valid
                     if len(list['todos']) < index or len(list['todos']) < destination:
                         logger.error("Index value out of list.")
-                    
+
                     # get real indexes
                     today = helper.filter_today(list['todos'])
                     relative_index = list['todos'].index(today[index - 1])
-                    relative_destination = list['todos'].index(today[destination - 1])
+                    relative_destination = list['todos'].index(
+                        today[destination - 1])
 
                 case 'tomorrow':
                     # check if index is valid
                     if len(list['todos']) < index or len(list['todos']) < destination:
                         logger.error("Index value out of list.")
-                    
+
                     # get real indexes
                     tomorrow = helper.filter_tomorrow(list['todos'])
                     relative_index = list['todos'].index(tomorrow[index - 1])
-                    relative_destination = list['todos'].index(tomorrow[destination - 1])
+                    relative_destination = list['todos'].index(
+                        tomorrow[destination - 1])
 
             # change position of item
             item = list['todos'].pop(relative_index)
             list['todos'].insert(relative_destination, item)
-
 
             # write to file
             storage.write(settings['path'] + '/all.todo', list)
@@ -650,22 +639,25 @@ def move(list_name: str, index: int, destination: int):
             # print the list
             match list_name:
                 case 'all':
-                    logger.print_list(list['todos'], name=list_name, move=(item['text'], index, destination))
+                    logger.print_list(list['todos'], name=list_name, move=(
+                        item['text'], index, destination))
 
                 case 'today':
-                    logger.print_list(helper.filter_today(list['todos']), name=list_name, move=(item['text'], index, destination))
+                    logger.print_list(helper.filter_today(
+                        list['todos']), name=list_name, move=(item['text'], index, destination))
 
                 case 'tomorrow':
-                    logger.print_list(helper.filter_tomorrow(list['todos']), name=list_name, move=(item['text'], index, destination))
-
+                    logger.print_list(helper.filter_tomorrow(
+                        list['todos']), name=list_name, move=(item['text'], index, destination))
 
         case 'local':
             # load file
             list = storage.load('local.todo')
 
-            # check if file exists 
+            # check if file exists
             if not list:
-                logger.error('List \'local\' is not set up yet. Initialize it by running \'todo create local\'')
+                logger.error(
+                    'List \'local\' is not set up yet. Initialize it by running \'todo create local\'')
 
             # check if index is valid
             if len(list['todos']) < index or len(list['todos']) < destination:
@@ -681,97 +673,9 @@ def move(list_name: str, index: int, destination: int):
             storage.write('local.todo', list)
 
             # print the list
-            logger.print_list(list['todos'], name=list_name, move=(item['text'], index, destination))
+            logger.print_list(list['todos'], name=list_name, move=(
+                item['text'], index, destination))
 
-# REMOVE CHILD
-def remove_child(list_name: str, index: int, child_index: int):
-    if not settings:
-        logger.error('Todo list is not set up yet. \nInitialize it by running \'todo setup\'')
-
-    if index < 1 or child_index <= 0:
-        logger.error("Index value must be positive.")
-
-    match list_name:
-        case 'all' | 'today' | 'tomorrow':
-            # check if file exists
-            if not os.path.isfile(settings['path'] + '/all.todo'):
-                logger.error('List \'all\' is not set up yet. \nInitialize it by running \'todo setup\'')
-
-            # read from file
-            with open(settings['path'] + '/all.todo', 'r') as file:
-                list = json.load(file)
-        
-            # calculate relative index
-            match list_name:
-                case 'all':
-                    # check if index is valid
-                    if len(list['todos']) < index:
-                        logger.error("Index value out of list.")
-                    relative_index = index - 1
-
-                case 'today':
-                    # check if index is valid
-                    if len(helper.filter_today(list['todos'])) < index: 
-                        logger.error("Index value out of list.")
-                    relative_index = list['todos'].index(helper.filter_today(list['todos'])[index - 1])
-
-                case 'tomorrow':
-                    # check if index is valid
-                    if len(helper.filter_tomorrow(list['todos'])) < index: 
-                        logger.error("Index value out of list.")
-                    relative_index = list['todos'].index(helper.filter_tomorrow(list['todos'])[index - 1])
-
-            # get parent
-            parent = list['todos'][relative_index]['text'] 
-
-            # remove item
-            removed = list['todos'][relative_index]['children'].pop(child_index - 1)['text']
-
-            # write to file
-            with open(settings['path'] + '/all.todo', 'w') as file:
-                json.dump(list, file)
-
-            # print the list
-            match list_name:
-                case 'all':
-                    logger.print_list(list['todos'], name=list_name, remove_child=(removed, parent))
-
-                case 'today':
-                    logger.print_list(helper.filter_today(list['todos']), name=list_name, remove_child=(removed, parent))
-
-                case 'tomorrow':
-                    logger.print_list(helper.filter_tomorrow(list['todos']), name=list_name, remove_child=(removed, parent))
-
-        case 'local':
-            # check if file exists
-            if not os.path.isfile('local.todo'):
-                logger.error('List \'local\' is not set up yet. \nInitialize it by running \'todo create local\'')
-
-            # read from file
-            with open('local.todo', 'r') as file:
-                list = json.load(file)
-
-            # check if index is valid
-            if len(list['todos']) < index:
-                logger.error("Index value out of list.")
-
-            # get parent
-            parent = list['todos'][index - 1]['text'] 
-
-            # remove item
-            removed = list['todos'][index - 1]['children'].pop(child_index - 1)['text']
-
-            # write to file
-            with open('local.todo', 'w') as file:
-                json.dump(list, file)
-
-            # print the list
-            logger.print_list(list['todos'], name=list_name, remove_child=(removed, parent))
-
-
-        case _:
-            pass
-    
 
 if __name__ == '__main__':
     main()
@@ -837,27 +741,27 @@ if os.path.isfile(paths['main']):
 def old_main():
     match sys.argv[1:]:
         # get
-        case []:
+        case[]:
             data = get(config['mode'])
             print_list('get', data)
-        
+
         # create
-        case ['create']:
+        case['create']:
             data = create('main')
             print_list('create', data)
 
         # add
-        case ['add', element]:
+        case['add', element]:
             data = add(config['mode'], element)
-            print_list('add', data) 
-        
+            print_list('add', data)
+
         # remove
-        case ['remove', index]:
+        case['remove', index]:
             data = remove(config['mode'], index)
             print_list('remove', data)
-        
+
         # all
-        case ['all']:
+        case['all']:
             data = get(config['mode'])
             # try:
             #     response = requests.get(paths['remote'])
@@ -871,13 +775,13 @@ def old_main():
             # except requests.exceptions.RequestException:
             #     pass
             print_list('all', data)
-        
+
         # mode get
-        case ['mode']:
+        case['mode']:
             print_list('mode')
-        
+
         # mode set
-        case ['mode', mode] if mode in ['remote', 'main', 'local']:
+        case['mode', mode] if mode in ['remote', 'main', 'local']:
             # check if mode is already set
             if mode == config['mode']:
                 print_error('mode', {
@@ -895,18 +799,18 @@ def old_main():
                 print_list('mode', {
                     'mode': mode
                 })
-            
+
         # serve
-        case ['serve']:
+        case['serve']:
             from server import app
             app.run(host='0.0.0.0', port='5000', debug=True)
 
         # help
-        case ['help']:
+        case['help']:
             print_list('help')
 
         # create branch
-        case ['branch', name]:
+        case['branch', name]:
 
             pass
 
@@ -914,7 +818,7 @@ def old_main():
         # case [path] if path in paths:
         #     data = get(path)
         #     print_list('get', data)
-        
+
         # # path create
         # case [path, 'create']:
         #     data = create(path)
@@ -930,11 +834,13 @@ def old_main():
         #     data = remove(path, index)
         #     print_list('remove', data)
 
-        case [*command]:
+        case[*command]:
             print(f"Illegal command {command}")
             exit(1)
 
 # create
+
+
 def old_create(mode, name=None):
     path = paths[mode]
 
@@ -943,7 +849,8 @@ def old_create(mode, name=None):
 
     # check if file exists
     if os.path.isfile(path):
-        print_error('create', {'error': 1, 'message': 'file already exists.', 'path': path})
+        print_error(
+            'create', {'error': 1, 'message': 'file already exists.', 'path': path})
 
     # create data
     if mode == 'local':
@@ -984,7 +891,8 @@ def old_get(mode):
         try:
             response = requests.get(path)
         except requests.exceptions.RequestException:
-            print_error('get', {'error': 1, 'message': 'server not found', 'path': path})
+            print_error(
+                'get', {'error': 1, 'message': 'server not found', 'path': path})
 
         # check for status code
         if response.status_code == 200:
@@ -996,13 +904,16 @@ def old_get(mode):
     # if local
     else:
         if not os.path.isfile(path):
-            print_error('get', {'error': 1, 'message': 'file not found', 'path': path})
+            print_error(
+                'get', {'error': 1, 'message': 'file not found', 'path': path})
 
         # read file
         with open(path, 'r') as file:
             return json.loads(file.read())
 
 # ADD
+
+
 def old_add(mode, added):
     path = paths[mode]
 
@@ -1021,7 +932,8 @@ def old_add(mode, added):
     else:
         # check for file
         if not os.path.isfile(path):
-            print_error('add', {'error': 1, 'message': 'file not found', 'path': path})
+            print_error(
+                'add', {'error': 1, 'message': 'file not found', 'path': path})
 
         # get and append new todo
         data = get(mode)
@@ -1059,7 +971,8 @@ def old_remove(mode, removed):
     else:
         # check for file
         if not os.path.isfile(path):
-            print_error('remove', {'error': 1, 'message': 'file not found', 'path': path})
+            print_error(
+                'remove', {'error': 1, 'message': 'file not found', 'path': path})
 
         # get todos
         data = get(mode)
@@ -1068,7 +981,8 @@ def old_remove(mode, removed):
         # check index validity
         if ((not removed.isnumeric() and removed != 'all') or
                 (removed.isnumeric() and (int(removed) > len(data['todos']) or int(removed) <= 0))):
-            print_error('remove', {'error': 2, 'message': 'invalid index.', 'path': path})
+            print_error(
+                'remove', {'error': 2, 'message': 'invalid index.', 'path': path})
 
         # delete all
         if removed == 'all':
@@ -1092,12 +1006,16 @@ def old_remove(mode, removed):
             'removed': removed_list
         }
 
+
 def print_bold(x, y=None): return cprint(x, y, attrs=['bold'], end='')
+
+
 mode_color = {
     'remote': 'blue',
     'main': 'yellow',
     'local': 'magenta'
 }
+
 
 def print_list(action, data={}):
     # get add remove
@@ -1175,22 +1093,24 @@ def print_list(action, data={}):
                 print_bold(f'\nAdd one by running: ', 'grey')
                 print_bold(
                     f'todo {"local " if not data["name"] == "main" else ""}add <todo>\n', 'grey')
-        
+
         if action == 'all':
 
             print_bold('\nOther lists:\n')
 
             # main
-            print_bold('main\n', mode_color['main']) if config['mode'] != 'main' and os.path.isfile(paths['main']) else None 
+            print_bold('main\n', mode_color['main']) if config['mode'] != 'main' and os.path.isfile(
+                paths['main']) else None
 
             # remote
             # try:
             #     print_bold('remote\n', mode_color['remote']) if config['mode'] != 'remote' and requests.get(paths['remote']) else None
             # except requests.exceptions.RequestException:
-            #     pass 
+            #     pass
 
-            # local 
-            print_bold('local\n', mode_color['local']) if config['mode'] != 'local' and os.path.isfile(paths['local']) else None
+            # local
+            print_bold('local\n', mode_color['local']) if config['mode'] != 'local' and os.path.isfile(
+                paths['local']) else None
 
             for list in data['links']:
                 if 'http://' in data['links'][list] or 'https://' in data['links'][list]:
@@ -1199,7 +1119,7 @@ def print_list(action, data={}):
                     color = mode_color['local']
 
                 if not list in ['main', 'remote', 'local', 'config', 'server']:
-                    print_bold(list, color) 
+                    print_bold(list, color)
                     print_bold('\t(' + data['links'][list] + ')\n', 'grey')
 
     # settings
@@ -1210,11 +1130,14 @@ def print_list(action, data={}):
             print_bold('\n')
 
         print_bold('\nMode:\n')
-        print_bold('[✓]', 'green') if config['mode'] == 'main' else print_bold('[ ]')
+        print_bold(
+            '[✓]', 'green') if config['mode'] == 'main' else print_bold('[ ]')
         print_bold(' main\n', mode_color['main'])
-        print_bold('[✓]', 'green') if config['mode'] == 'remote' else print_bold('[ ]')
+        print_bold(
+            '[✓]', 'green') if config['mode'] == 'remote' else print_bold('[ ]')
         print_bold(' remote\n', mode_color['remote'])
-        print_bold('[✓]', 'green') if config['mode'] == 'local' else print_bold('[ ]')
+        print_bold(
+            '[✓]', 'green') if config['mode'] == 'local' else print_bold('[ ]')
         print_bold(' local\n', mode_color['local'])
 
         if data:
@@ -1223,18 +1146,24 @@ def print_list(action, data={}):
             print_bold(' just by running: todo\n', 'grey')
         else:
             print_bold('\nEdit with: todo mode <mode>\n', 'grey')
-    
+
     elif action == 'help':
         title = None
         color = 'grey'
         print_bold('\nUsage: todo [options]\n', title)
         print_bold('\nOptions:\n', title)
-        print_bold('  create                               -   creates a new main list\n', color)
-        print_bold('  add <todo>                           -   adds a new todo to the default list\n', color)
-        print_bold('  remove <index>                       -   removes a new todo to the default list\n', color)
-        print_bold('  all                                  -   prints all todolists\n', color)
-        print_bold('  local [create | add | remove]        -   work with local todolist\n', color)
-        print_bold('  <listname> [create | add | remove]   -   work with specific todolist\n', color)
+        print_bold(
+            '  create                               -   creates a new main list\n', color)
+        print_bold(
+            '  add <todo>                           -   adds a new todo to the default list\n', color)
+        print_bold(
+            '  remove <index>                       -   removes a new todo to the default list\n', color)
+        print_bold(
+            '  all                                  -   prints all todolists\n', color)
+        print_bold(
+            '  local [create | add | remove]        -   work with local todolist\n', color)
+        print_bold(
+            '  <listname> [create | add | remove]   -   work with specific todolist\n', color)
         print_bold('\nColors:\n', title)
         print_bold('yellow', 'yellow')
         print_bold('\t- main list\n', color)
@@ -1242,6 +1171,7 @@ def print_list(action, data={}):
         print_bold('\t- remote list\n', color)
         print_bold('purple', 'magenta')
         print_bold('\t- local list\n', color)
+
 
 def print_error(action, data={}):
     print_bold('\nError: ', 'red')

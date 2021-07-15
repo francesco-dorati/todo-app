@@ -38,8 +38,8 @@ def clear_screen():
         _ = os.system('clear') # unix
 
 def print_list(
-              list: list, 
-              name: str, 
+              list: dict, 
+              filter: str = None, 
               add: str = None, 
               update: tuple[str, str] = None, 
               remove: str = None, 
@@ -47,27 +47,37 @@ def print_list(
               ):
   print()
 
+  # recursive function
+  def recursive_print(list: list, parent_index: str = None):
+    for index, todo in enumerate(list):
+      index += 1 
+      if parent_index:
+        tabs_number = len(parent_index.split('.'))
+        print('\t' * tabs_number + f"[{parent_index}.{index}] {todo['text']}")
+      else:
+        print(f"[{index}] {todo['text']}")
+    
+      if todo['children']:
+        recursive_print(todo['children'], f'{parent_index}.{index}' if parent_index else str(index))
+
   if add:
-    print(f"Added \"{add}\" successfully to {name}.\n")
+    print(f"Added \"{add}\" successfully to {list['name']}.\n")
 
   elif update:
-    print(f"Updated \"{update[0]}\" to \"{update[1]}\" successfully from {name}.\n")
+    print(f"Updated \"{update[0]}\" to \"{update[1]}\" successfully from {list['name']}.\n")
 
   elif remove:
-    print(f"Removed \"{remove}\" successfully from {name}.\n")
+    print(f"Removed \"{remove}\" successfully from {list['name']}.\n")
 
   elif move:
     print(f'Moved \"{move[0]}\" from position {move[1]} to position {move[2]}.\n')
 
-  if list:
-    print(f"\"{name}\" list:")
-    for index, todo in enumerate(list):
-      print(f"[{index + 1}] {todo['text']}")
-      if todo['children']:
-        for child_index, child in enumerate(todo['children']):
-          print(f"\t[{index + 1}.{child_index + 1}] {child['text']}")
+  if list['todos']:
+    print(f"\"{list['name']}\" list:")
+    recursive_print(list['todos'])
+
   else:
-    print(f"\"{name}\" list is empty.")
+    print(f"\"{list['name']}\" list is empty.")
   
   print()
 
