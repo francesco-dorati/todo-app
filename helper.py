@@ -1,4 +1,6 @@
 import datetime
+import os
+import json
 
 def is_today(deadline) -> bool:
     if not deadline:
@@ -39,5 +41,34 @@ def filter(list: dict, deadline: str):
     return list
 
 
-def unpack_indexes(index_string: str):
-    return []
+def unpack_indexes(index_string: str, list: list) -> list:
+    try:
+        index_list = [int(i) - 1 for i in index_string.split(".")]
+    except ValueError:
+        return False
+
+    # validate indexes
+    for index in index_list:
+        # index out of range
+        if index < 0:
+            return False
+
+        # index out of range
+        if index > len(list):
+            return False
+
+        # next child
+        list = list[index]['children']
+
+    return index_list 
+
+def load_file(path: str) -> dict | None:
+    if not os.path.isfile(path):
+        return None
+
+    with open(path, 'r') as file:   
+        return json.load(file)
+
+def write_file(path: str, data: dict):
+	with open(path, 'w') as file:
+		json.dump(data, file)
