@@ -1,4 +1,8 @@
 import datetime
+import os
+import json
+
+import logger
 
 def is_today(deadline) -> bool:
     if not deadline:
@@ -37,3 +41,36 @@ def filter(list: dict, deadline: str):
             list['todos'] = recursive_filter(list['todos'], is_tomorrow)
 
     return list
+
+
+def unpack_indexes(index_string: str, list: list) -> list:
+    try:
+        index_list = [int(i) - 1 for i in index_string.split(".")]
+    except ValueError:
+        logger.error('Invalid index.')
+
+    # validate indexes
+    for index in index_list:
+        # index out of range
+        if index < 0:
+            logger.error('Invalid index.')
+
+        # index out of range
+        if index >= len(list):
+            logger.error('Invalid index.')
+
+        # next child
+        list = list[index]['children']
+
+    return index_list 
+
+def load_file(path: str) -> dict | None:
+    if not os.path.isfile(path):
+        return None
+
+    with open(path, 'r') as file:   
+        return json.load(file)
+
+def write_file(path: str, data: dict):
+	with open(path, 'w') as file:
+		json.dump(data, file)
