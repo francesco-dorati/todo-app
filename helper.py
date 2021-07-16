@@ -37,3 +37,7 @@ def filter(list: dict, deadline: str):
             list['todos'] = recursive_filter(list['todos'], is_tomorrow)
 
     return list
+
+
+def unpack_indexes(index_string: str):
+    return []
