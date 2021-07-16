@@ -2,6 +2,8 @@ import datetime
 import os
 import json
 
+import logger
+
 def is_today(deadline) -> bool:
     if not deadline:
         return False
@@ -45,17 +47,17 @@ def unpack_indexes(index_string: str, list: list) -> list:
     try:
         index_list = [int(i) - 1 for i in index_string.split(".")]
     except ValueError:
-        return False
+        logger.error('Invalid index.')
 
     # validate indexes
     for index in index_list:
         # index out of range
         if index < 0:
-            return False
+            logger.error('Invalid index.')
 
         # index out of range
-        if index > len(list):
-            return False
+        if index >= len(list):
+            logger.error('Invalid index.')
 
         # next child
         list = list[index]['children']

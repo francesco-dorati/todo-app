@@ -4,7 +4,6 @@ import os
 import json
 import datetime
 
-# import requests
 
 import helper
 import logger
@@ -18,8 +17,8 @@ settings = None
 if os.path.isfile(SETTINGS_PATH):
     settings = helper.load_file(SETTINGS_PATH)
     PATH = {
-        'all': settings['path'] + '/all.todo',
-        'local': 'local.todo',
+        'all': lambda: settings['path'] + '/all.todo',
+        'local': lambda: 'local.todo',
     }
 
 def main():
@@ -38,7 +37,7 @@ def main():
 
         # create list
         case['create', 'list' | 'section' as type, list_name]:
-            create(type, name)
+            create(type, list_name)
 
         # rename
         case['rename', list_name, new_list_name]:
@@ -78,8 +77,11 @@ def main():
             update(list_name, index, text.strip(), append)
 
         # remove
-        case[list_name, 'r' | 'remove', index] if list_name in ['all', 'local']:
-            remove(list_name, index)
+        case[list_name, 'r' | 'remove', *index_list] if list_name in ['all', 'local']:
+            if not index_list:
+                logger.error('You must provide at least one index.')
+
+            remove(list_name, index_list)
 
         # move
         case[list_name, 'm' | 'move', index, destination] if list_name in ['all', 'local']:
@@ -286,7 +288,7 @@ def get(list_name: str, deadline: str = None):
             'Todo list is not set up yet.\n Initialize it by running \'todo setup\'')
 
     # load file
-    list = helper.load_file(PATH[list_name])
+    list = helper.load_file(PATH[list_name]())
 
     # check if file exists
     if not list:
@@ -306,7 +308,7 @@ def add(list_name: str, text: str, deadline: str = None, position: str = None):
             'Todo list is not set up yet.\n Initialize it by running \'todo setup\'')
 
     # load file
-    list = helper.load_file(PATH[list_name])
+    list = helper.load_file(PATH[list_name]())
 
     # check if file exists
     if not list:
@@ -331,10 +333,7 @@ def add(list_name: str, text: str, deadline: str = None, position: str = None):
         # unpack index
         index_list = helper.unpack_indexes(position, list['todos'])
 
-        if not index_list:
-            logger.error('Invalid index.')
-
-        # validate indexes
+        # traverse the list
         current = list['todos']
         last_index = len(index_list) - 1
         for i, index in enumerate(index_list):
@@ -354,7 +353,7 @@ def add(list_name: str, text: str, deadline: str = None, position: str = None):
         list['todos'].append(todo)
 
     # write to file
-    helper.write_file(PATH[list_name], list)
+    helper.write_file(PATH[list_name](), list)
 
     # print the list
     logger.print_list(list, add=text)
@@ -366,7 +365,7 @@ def update(list_name: str, index_string: str, text: str, append: bool = False):
             'Todo list is not set up yet.\n Initialize it by running \'todo setup\'')
 
     # load file
-    list = helper.load_file(PATH[list_name])
+    list = helper.load_file(PATH[list_name]())
     
     # check if file exists
     if not list:
@@ -393,110 +392,65 @@ def update(list_name: str, index_string: str, text: str, append: bool = False):
             current = current[index]['children']
 
     # write to file
-    helper.write_file(PATH[list_name], list)
+    helper.write_file(PATH[list_name](), list)
 
     # print the list
     logger.print_list(list, update=(old_text, text))
 
 # REMOVE
-def remove(list_name: str, index: str):
+def remove(list_name: str, index_list: list):
     if not settings:
         logger.error(
             'Todo list is not set up yet.\n Initialize it by running \'todo setup\'')
 
-    # unpack the indexes
-    try:
-        index_list = [int(i) - 1 for i in index.split(".")]
-    except ValueError:
-        logger.error("Invalid index.")
+    # load file
+    list = helper.load_file(PATH[list_name]())
 
-    # check if all indexes are positive
-    if any(i < 0 for i in index_list):
-        logger.error("Index value must be positive.")
-
-    match list_name:
-        case 'all' | 'today' | 'tomorrow':
-            # load file
-            list = helper.load_file(settings['path'] + '/all.todo')
-
-            # check if file exists
-            if not list:
-                logger.error(
-                    'List \'all\' is not set up yet. Initialize it by running \'todo setup\'')
-
-            # remove the todo
-            match list_name:
-                case 'all':
-                    # check if index is valid
-                    if len(list['todos']) <= index_list[0]:
-                        logger.error("Index value out of list.")
-
-                case 'today':
-                    # check if index is valid
-                    if len(helper.filter_today(list['todos'])) <= index_list[0]:
-                        logger.error("Index value out of list.")
-                    index_list[0] = list['todos'].index(
-                        helper.filter_today(list['todos'])[index - 1])
-
-                case 'tomorrow':
-                    # check if index is valid
-                    if len(helper.filter_tomorrow(list['todos'])) <= index_list[0]:
-                        logger.error("Index value out of list.")
-                    index_list[0] = list['todos'].index(
-                        helper.filter_tomorrow(list['todos'])[index - 1])
-
-            # remove item
-            if len(index_list) == 1:
-                removed = list['todos'].pop(index_list[0])['text']
+    # check if file exists
+    if not list:
+        logger.error(
+            f'List \'{list["name"]}\' is not set up yet. Initialize it by running \'todo setup\'')
+    
+    # get todos to delete (in current index)
+    delete_list = []
+    for index_string in index_list:
+        # unpack index
+        destructured_index = helper.unpack_indexes(index_string, list['todos'])
+        
+        # traverse the list
+        current = list['todos']
+        last_index = len(destructured_index) - 1
+        for i, index in enumerate(destructured_index):
+            # if last index
+            if i == last_index:
+                # add item to delete list
+                delete_list.append(current[index])
             else:
-                removed = list['todos'][index_list[0]]['children'].pop(index_list[1])[
-                    'text']
-
-            # write to file
-            helper.write_file(settings['path'] + '/all.todo', list)
-
-            # print the list
-            match list_name:
-                case 'all':
-                    logger.print_list(
-                        list['todos'], name=list_name, remove=removed)
-
-                case 'today':
-                    logger.print_list(helper.filter_today(
-                        list['todos']), name=list_name, remove=removed)
-
-                case 'tomorrow':
-                    logger.print_list(helper.filter_tomorrow(
-                        list['todos']), name=list_name, remove=removed)
-
-        case 'local':
-            # load file
-            list = helper.load_file('local.todo')
-
-            # check if file exists
-            if not list:
-                logger.error(
-                    'List \'local\' is not set up yet. Initialize it by running \'todo create local\'')
-
-            # check if index is valid
-            if len(list['todos']) <= index_list[0]:
-                logger.error("Index value out of list.")
-
-            # remove item
-            if len(index_list) == 1:
-                removed = list['todos'].pop(index_list[0])['text']
+                # next child
+                current = current[index]['children']
+    
+    # delete todos
+    for i, index_string in enumerate(index_list):
+        # unpack index
+        destructured_index = helper.unpack_indexes(index_string, list['todos'])
+        
+        # traverse the list
+        current = list['todos']
+        last_index = len(destructured_index) - 1
+        for ii, index in enumerate(destructured_index):
+            # if last index
+            if ii == last_index:
+                # add item to delete list
+                current.remove(delete_list[i])
             else:
-                removed = list['todos'][index_list[0]]['children'].pop(index_list[1])[
-                    'text']
+                # next child
+                current = current[index]['children']
 
-            # write to file
-            helper.write_file('local.todo', list)
+    # write to file
+    helper.write_file(PATH[list_name](), list)
 
-            # print the list
-            logger.print_list(list['todos'], name=list_name, remove=removed)
-
-        case _:
-            pass
+    # print the list
+    logger.print_list(list, remove=delete_list[0])
 
 # MOVE
 def move(list_name: str, index: int, destination: int):
