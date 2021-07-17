@@ -1,4 +1,4 @@
-# import 
+import sys
 
 def print_help():
   print("""
@@ -82,6 +82,6 @@ def print_list(
   print()
 
 def error(message: str):
-  print(f"Error: {message}")
+  sys.stderr.write(f"Error: {message}\n")
   exit(1)
 
