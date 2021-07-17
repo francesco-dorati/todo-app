@@ -1,9 +1,7 @@
 #!/usr/bin/env python3
 import sys
 import os
-import json
 import datetime
-
 
 import helper
 import logger
@@ -80,12 +78,11 @@ def main():
         case[list_name, 'r' | 'remove', *index_list] if list_name in ['all', 'local']:
             if not index_list:
                 logger.error('You must provide at least one index.')
-
             remove(list_name, index_list)
 
         # move
-        case[list_name, 'm' | 'move', index, destination] if list_name in ['all', 'local']:
-            move(list_name, int(index), int(destination))
+        case[list_name, 'm' | 'move', starting_index, destination_index] if list_name in ['all', 'local']:
+            move(list_name, starting_index, destination_index)
 
         # get
         case[list_name, *args] if list_name in ['all', 'local']:
@@ -375,9 +372,6 @@ def update(list_name: str, index_string: str, text: str, append: bool = False):
     # unpack index
     index_list = helper.unpack_indexes(index_string, list['todos'])
 
-    if not index_list:
-        logger.error('Invalid index.')
-
     current = list['todos']
     last_index = len(index_list) - 1
     for i, index in enumerate(index_list):
@@ -450,103 +444,67 @@ def remove(list_name: str, index_list: list):
     helper.write_file(PATH[list_name](), list)
 
     # print the list
-    logger.print_list(list, remove=delete_list[0])
+    logger.print_list(list, remove=delete_list[0]['text'])
 
 # MOVE
-def move(list_name: str, index: int, destination: int):
+def move(list_name: str, start_string: int, end_string: int):
     if not settings:
         logger.error(
             'Todo list is not set up yet.\n Initialize it by running \'todo setup\'')
 
-    if index < 1 or destination <= 0:
-        logger.error("Index value must be positive.")
+    # load file
+    list = helper.load_file(PATH[list_name]())
 
-    match list_name:
-        case 'all' | 'today' | 'tomorrow':
-            # load file
-            list = helper.load_file(settings['path'] + '/all.todo')
+    # check if file exists
+    if not list:
+        logger.error(
+            f'List \'{list["name"]}\' is not set up yet. Initialize it by running \'todo setup\'')
+    
+    # child check
+    child = False
+    if end_string[-1] == '.':
+        child = True
+        end_string = end_string[:-1]
+    
+    # unpack indexes
+    start_list = helper.unpack_indexes(start_string, list['todos'])
+    end_list = helper.unpack_indexes(end_string, list['todos'])
 
-            # check if file exists
-            if not list:
-                logger.error(
-                    'List \'all\' is not set up yet. Initialize it by running \'todo setup\'')
+    # get the todo to be moved
+    current1 = list['todos']
+    last_index = len(start_list) - 1
+    for i, index in enumerate(start_list):
+        # if last index
+        if i == last_index:
+            # store the todo
+            todo = current1[index]
+            current1[index] = 'DELETED'
+        else:
+            # next child
+            current1 = current1[index]['children']
 
-            match list_name:
-                case 'all':
-                    # check if index is valid
-                    if len(list['todos']) < index or len(list['todos']) < destination:
-                        logger.error("Index value out of list.")
+    # add the new todo
+    current2 = list['todos']
+    last_index = len(end_list) - 1
+    for i, index in enumerate(end_list):
+        # if last index
+        if i == last_index:
+            if child:
+                current2[index]['children'].append(todo)
+            else:
+                current2.insert(index, todo)
+        else:
+            # next child
+            current2 = current2[index]['children'] 
 
-                    relative_index, relative_destination = index - 1, destination - 1
+    # delete old todo
+    current1.remove('DELETED')
 
-                case 'today':
-                    # check if index is valid
-                    if len(list['todos']) < index or len(list['todos']) < destination:
-                        logger.error("Index value out of list.")
+    # write to file
+    helper.write_file(PATH[list_name](), list)
 
-                    # get real indexes
-                    today = helper.filter_today(list['todos'])
-                    relative_index = list['todos'].index(today[index - 1])
-                    relative_destination = list['todos'].index(
-                        today[destination - 1])
-
-                case 'tomorrow':
-                    # check if index is valid
-                    if len(list['todos']) < index or len(list['todos']) < destination:
-                        logger.error("Index value out of list.")
-
-                    # get real indexes
-                    tomorrow = helper.filter_tomorrow(list['todos'])
-                    relative_index = list['todos'].index(tomorrow[index - 1])
-                    relative_destination = list['todos'].index(
-                        tomorrow[destination - 1])
-
-            # change position of item
-            item = list['todos'].pop(relative_index)
-            list['todos'].insert(relative_destination, item)
-
-            # write to file
-            helper.write_file(settings['path'] + '/all.todo', list)
-
-            # print the list
-            match list_name:
-                case 'all':
-                    logger.print_list(list['todos'], name=list_name, move=(
-                        item['text'], index, destination))
-
-                case 'today':
-                    logger.print_list(helper.filter_today(
-                        list['todos']), name=list_name, move=(item['text'], index, destination))
-
-                case 'tomorrow':
-                    logger.print_list(helper.filter_tomorrow(
-                        list['todos']), name=list_name, move=(item['text'], index, destination))
-
-        case 'local':
-            # load file
-            list = helper.load_file('local.todo')
-
-            # check if file exists
-            if not list:
-                logger.error(
-                    'List \'local\' is not set up yet. Initialize it by running \'todo create local\'')
-
-            # check if index is valid
-            if len(list['todos']) < index or len(list['todos']) < destination:
-                logger.error("Index value out of list.")
-
-            relative_index, relative_destination = index - 1, destination - 1
-
-            # change position of item
-            item = list['todos'].pop(relative_index)
-            list['todos'].insert(relative_destination, item)
-
-            # write to file
-            helper.write_file('local.todo', list)
-
-            # print the list
-            logger.print_list(list['todos'], name=list_name, move=(
-                item['text'], index, destination))
+    # print the list
+    logger.print_list(list, move=(todo['text'], start_string, end_string))
 
 
 if __name__ == '__main__':
