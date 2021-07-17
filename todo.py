@@ -15,7 +15,9 @@ settings = None
 if os.path.isfile(SETTINGS_PATH):
     settings = helper.load_file(SETTINGS_PATH)
     PATH = {
+        'a': lambda: settings['path'] + '/all.todo',
         'all': lambda: settings['path'] + '/all.todo',
+        'l': lambda: 'local.todo',
         'local': lambda: 'local.todo',
     }
 
@@ -47,7 +49,7 @@ def main():
             exit()
 
         # add
-        case[list_name, 'a' | 'add', text, *args] if list_name in ['all', 'local']:
+        case[list_name, 'a' | 'add', text, *args] if list_name in PATH:
             deadline, position = None, None
             # load args
             if args:
@@ -65,7 +67,7 @@ def main():
             add(list_name, text.strip(), deadline, position)
 
         # update
-        case[list_name, 'u' | 'update', index, text, *args] if list_name in ['all', 'local']:
+        case[list_name, 'u' | 'update', index, text, *args] if list_name in PATH:
             append = False
             if args and len(args) == 2:
                 match args[0]:
@@ -75,17 +77,17 @@ def main():
             update(list_name, index, text.strip(), append)
 
         # remove
-        case[list_name, 'r' | 'remove', *index_list] if list_name in ['all', 'local']:
+        case[list_name, 'r' | 'remove', *index_list] if list_name in PATH:
             if not index_list:
                 logger.error('You must provide at least one index.')
             remove(list_name, index_list)
 
         # move
-        case[list_name, 'm' | 'move', starting_index, destination_index] if list_name in ['all', 'local']:
+        case[list_name, 'm' | 'move', starting_index, destination_index] if list_name in PATH:
             move(list_name, starting_index, destination_index)
 
         # get
-        case[list_name, *args] if list_name in ['all', 'local']:
+        case[list_name, *args] if list_name in PATH:
             deadline = None
             if args and len(args) == 2:
                 match args[0]:
