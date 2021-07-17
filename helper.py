@@ -4,6 +4,23 @@ import json
 
 import logger
 
+def load_lists(path: str):
+    res = {
+        'all': path + '/all.todo',  'a': path + '/all.todo',
+        'local': 'local.todo',      'l': 'local.todo',
+    }
+
+    # loop for files in todo folder
+    for filename in os.listdir(path):
+        if filename == 'all.todo':
+            continue
+        
+        if filename[-5:] == '.todo':
+            res[filename[:-5]] = path + '/' + filename
+    
+    return res
+
+
 def is_today(deadline) -> bool:
     if not deadline:
         return False

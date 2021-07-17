@@ -84,4 +84,3 @@ def print_list(
 def error(message: str):
   sys.stderr.write(f"Error: {message}\n")
   exit(1)
-

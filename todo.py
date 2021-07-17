@@ -2,24 +2,22 @@
 import sys
 import os
 import datetime
+from typing import no_type_check_decorator
 
 import helper
 import logger
 
 
-BASE_PATH = '/'.join(os.path.realpath(__file__).split('/')[:-1]) + '/'
-SETTINGS_PATH = BASE_PATH + 'settings.json'
+CODEBASE_PATH = '/'.join(os.path.realpath(__file__).split('/')[:-1]) + '/'
+SETTINGS_PATH = CODEBASE_PATH + 'settings.json'
 
 # load settings
 settings = None
 if os.path.isfile(SETTINGS_PATH):
     settings = helper.load_file(SETTINGS_PATH)
-    PATH = {
-        'a': lambda: settings['path'] + '/all.todo',
-        'all': lambda: settings['path'] + '/all.todo',
-        'l': lambda: 'local.todo',
-        'local': lambda: 'local.todo',
-    }
+    MODE = settings['mode']
+    MAIN_FOLDER_PATH = settings['path']
+    AVAILABLE_LISTS =  helper.load_lists(MAIN_FOLDER_PATH)
 
 def main():
     match sys.argv[1:]:
@@ -31,13 +29,9 @@ def main():
         case['setup']:
             setup()
 
-        # create local list
-        case['create', 'local']:
-            create('local')
-
         # create list
-        case['create', 'list' | 'section' as type, list_name]:
-            create(type, list_name)
+        case['create', list_name]:
+            create(list_name)
 
         # rename
         case['rename', list_name, new_list_name]:
@@ -49,7 +43,7 @@ def main():
             exit()
 
         # add
-        case[list_name, 'a' | 'add', text, *args] if list_name in PATH:
+        case[list_name, 'a' | 'add', text, *args] if list_name in AVAILABLE_LISTS:
             deadline, position = None, None
             # load args
             if args:
@@ -67,7 +61,7 @@ def main():
             add(list_name, text.strip(), deadline, position)
 
         # update
-        case[list_name, 'u' | 'update', index, text, *args] if list_name in PATH:
+        case[list_name, 'u' | 'update', index, text, *args] if list_name in AVAILABLE_LISTS:
             append = False
             if args and len(args) == 2:
                 match args[0]:
@@ -77,17 +71,17 @@ def main():
             update(list_name, index, text.strip(), append)
 
         # remove
-        case[list_name, 'r' | 'remove', *index_list] if list_name in PATH:
+        case[list_name, 'r' | 'remove', *index_list] if list_name in AVAILABLE_LISTS:
             if not index_list:
                 logger.error('You must provide at least one index.')
             remove(list_name, index_list)
 
         # move
-        case[list_name, 'm' | 'move', starting_index, destination_index] if list_name in PATH:
+        case[list_name, 'm' | 'move', starting_index, destination_index] if list_name in AVAILABLE_LISTS:
             move(list_name, starting_index, destination_index)
 
         # get
-        case[list_name, *args] if list_name in PATH:
+        case[list_name, *args] if list_name in AVAILABLE_LISTS:
             deadline = None
             if args and len(args) == 2:
                 match args[0]:
@@ -101,8 +95,6 @@ def main():
         case _:
             logger.error('Wrong Command')
 
-# todo projects create todo-app
-# todo projects todo-app add
 
 # SHELL
 def shell():
@@ -175,7 +167,7 @@ def setup():
         while True:
             path = input("Path for todo folder (Enter for default): ")
             if path == '':  # default
-                path = BASE_PATH
+                path = CODEBASE_PATH
                 break
             elif os.path.isdir(path):
                 path = path.strip('/') + '/'
@@ -243,51 +235,46 @@ def setup():
         print("Done.")
 
 # CREATE
-def create(type: str, name: str = None):
-    match type:
-        case 'list':
-            if not name:
-                logger.error("List name is required.")
-                # todo
+def create(name: str = None):
+    if not MAIN_FOLDER_PATH:
+        logger.error(
+            'Todo list is not set up yet.\n Initialize it by running \'todo setup\'')
 
-        case 'section':
-            if not name:
-                logger.error("List name is required.")
-                # todo
+    # calculate path
+    if name == 'local':
+        path = 'local.todo'
+    else:
+        path = MAIN_FOLDER_PATH + f'/{name}.todo'
 
-        case 'local':
-            if not name:
-                name = os.path.basename(os.getcwd())
+    # check if local file exists
+    if os.path.isfile(path):
+        while True:
+            a = input(
+                f'A {name} todo list already exists. Do you want to overwrite it [y/N]? ').lower()
+            # do not overwrite
+            if a == 'n' or a == 'no' or a == '':
+                exit()
 
-            # check if local file exists
-            if os.path.isfile('local.todo'):
-                while True:
-                    a = input(
-                        'A local todo list already exists. Do you want to overwrite it [y/N]? ').lower()
-                    # do not overwrite
-                    if a == 'n' or a == 'no' or a == '':
-                        exit()
+            # overwrite
+            elif a == 'y' or a == 'yes':
+                break
 
-                    # overwrite
-                    elif a == 'y' or a == 'yes':
-                        break
+    # create file
+    helper.write_file(path, {
+        'name': name,
+        'todos': []
+    })
 
-            # create file
-            helper.write_file('local.todo', {
-                'name': name,
-                'todos': []
-            })
-
-            print(f"Created new local list \"{name}\" successfully.")
+    print(f"Created new {name} list successfully.")
 
 # GET
 def get(list_name: str, deadline: str = None):
-    if not settings:
+    if not MAIN_FOLDER_PATH:
         logger.error(
             'Todo list is not set up yet.\n Initialize it by running \'todo setup\'')
 
     # load file
-    list = helper.load_file(PATH[list_name]())
+    list = helper.load_file(AVAILABLE_LISTS[list_name])
 
     # check if file exists
     if not list:
@@ -302,12 +289,12 @@ def get(list_name: str, deadline: str = None):
 
 # ADD
 def add(list_name: str, text: str, deadline: str = None, position: str = None):
-    if not settings:
+    if not MAIN_FOLDER_PATH:
         logger.error(
             'Todo list is not set up yet.\n Initialize it by running \'todo setup\'')
 
     # load file
-    list = helper.load_file(PATH[list_name]())
+    list = helper.load_file(AVAILABLE_LISTS[list_name])
 
     # check if file exists
     if not list:
@@ -352,19 +339,19 @@ def add(list_name: str, text: str, deadline: str = None, position: str = None):
         list['todos'].append(todo)
 
     # write to file
-    helper.write_file(PATH[list_name](), list)
+    helper.write_file(AVAILABLE_LISTS[list_name], list)
 
     # print the list
     logger.print_list(list, add=text)
 
 # UPDATE
 def update(list_name: str, index_string: str, text: str, append: bool = False):
-    if not settings:
+    if not MAIN_FOLDER_PATH:
         logger.error(
             'Todo list is not set up yet.\n Initialize it by running \'todo setup\'')
 
     # load file
-    list = helper.load_file(PATH[list_name]())
+    list = helper.load_file(AVAILABLE_LISTS[list_name])
     
     # check if file exists
     if not list:
@@ -388,74 +375,19 @@ def update(list_name: str, index_string: str, text: str, append: bool = False):
             current = current[index]['children']
 
     # write to file
-    helper.write_file(PATH[list_name](), list)
+    helper.write_file(AVAILABLE_LISTS[list_name], list)
 
     # print the list
     logger.print_list(list, update=(old_text, text))
 
-# REMOVE
-def remove(list_name: str, index_list: list):
-    if not settings:
-        logger.error(
-            'Todo list is not set up yet.\n Initialize it by running \'todo setup\'')
-
-    # load file
-    list = helper.load_file(PATH[list_name]())
-
-    # check if file exists
-    if not list:
-        logger.error(
-            f'List \'{list["name"]}\' is not set up yet. Initialize it by running \'todo setup\'')
-    
-    # get todos to delete (in current index)
-    delete_list = []
-    for index_string in index_list:
-        # unpack index
-        destructured_index = helper.unpack_indexes(index_string, list['todos'])
-        
-        # traverse the list
-        current = list['todos']
-        last_index = len(destructured_index) - 1
-        for i, index in enumerate(destructured_index):
-            # if last index
-            if i == last_index:
-                # add item to delete list
-                delete_list.append(current[index])
-            else:
-                # next child
-                current = current[index]['children']
-    
-    # delete todos
-    for i, index_string in enumerate(index_list):
-        # unpack index
-        destructured_index = helper.unpack_indexes(index_string, list['todos'])
-        
-        # traverse the list
-        current = list['todos']
-        last_index = len(destructured_index) - 1
-        for ii, index in enumerate(destructured_index):
-            # if last index
-            if ii == last_index:
-                # add item to delete list
-                current.remove(delete_list[i])
-            else:
-                # next child
-                current = current[index]['children']
-
-    # write to file
-    helper.write_file(PATH[list_name](), list)
-
-    # print the list
-    logger.print_list(list, remove=delete_list[0]['text'])
-
 # MOVE
 def move(list_name: str, start_string: int, end_string: int):
-    if not settings:
+    if not MAIN_FOLDER_PATH:
         logger.error(
             'Todo list is not set up yet.\n Initialize it by running \'todo setup\'')
 
     # load file
-    list = helper.load_file(PATH[list_name]())
+    list = helper.load_file(AVAILABLE_LISTS[list_name])
 
     # check if file exists
     if not list:
@@ -503,13 +435,66 @@ def move(list_name: str, start_string: int, end_string: int):
     current1.remove('DELETED')
 
     # write to file
-    helper.write_file(PATH[list_name](), list)
+    helper.write_file(AVAILABLE_LISTS[list_name], list)
 
     # print the list
     logger.print_list(list, move=(todo['text'], start_string, end_string))
 
+# REMOVE
+def remove(list_name: str, index_list: list):
+    if not MAIN_FOLDER_PATH:
+        logger.error(
+            'Todo list is not set up yet.\n Initialize it by running \'todo setup\'')
+
+    # load file
+    list = helper.load_file(AVAILABLE_LISTS[list_name])
+
+    # check if file exists
+    if not list:
+        logger.error(
+            f'List \'{list["name"]}\' is not set up yet. Initialize it by running \'todo setup\'')
+    
+    # get todos to delete (in current index)
+    delete_list = []
+    for index_string in index_list:
+        # unpack index
+        destructured_index = helper.unpack_indexes(index_string, list['todos'])
+        
+        # traverse the list
+        current = list['todos']
+        last_index = len(destructured_index) - 1
+        for i, index in enumerate(destructured_index):
+            # if last index
+            if i == last_index:
+                # add item to delete list
+                delete_list.append(current[index])
+            else:
+                # next child
+                current = current[index]['children']
+    
+    # delete todos
+    for i, index_string in enumerate(index_list):
+        # unpack index
+        destructured_index = helper.unpack_indexes(index_string, list['todos'])
+        
+        # traverse the list
+        current = list['todos']
+        last_index = len(destructured_index) - 1
+        for ii, index in enumerate(destructured_index):
+            # if last index
+            if ii == last_index:
+                # add item to delete list
+                current.remove(delete_list[i])
+            else:
+                # next child
+                current = current[index]['children']
+
+    # write to file
+    helper.write_file(AVAILABLE_LISTS[list_name], list)
+
+    # print the list
+    logger.print_list(list, remove=delete_list[0]['text'])
+
 
 if __name__ == '__main__':
     main()
-
-exit()
