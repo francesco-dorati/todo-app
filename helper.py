@@ -60,7 +60,7 @@ def filter(list: dict, deadline: str):
     return list
 
 
-def unpack_indexes(index_string: str, list: list) -> list:
+def unpack_indexes(index_string: str, list: list = None) -> list:
     try:
         index_list = [int(i) - 1 for i in index_string.split(".")]
     except ValueError:
@@ -73,11 +73,12 @@ def unpack_indexes(index_string: str, list: list) -> list:
             logger.error('Invalid index.')
 
         # index out of range
-        if index >= len(list):
-            logger.error('Invalid index.')
+        if list: 
+            if index >= len(list):
+                logger.error('Invalid index.')
 
-        # next child
-        list = list[index]['children']
+            # next child
+            list = list[index]['children']
 
     return index_list 
 

@@ -475,7 +475,7 @@ def remove(list_name: str, index_list: list):
     # delete todos
     for i, index_string in enumerate(index_list):
         # unpack index
-        destructured_index = helper.unpack_indexes(index_string, list['todos'])
+        destructured_index = helper.unpack_indexes(index_string)
         
         # traverse the list
         current = list['todos']
