@@ -2,7 +2,6 @@
 import sys
 import os
 import datetime
-from typing import no_type_check_decorator
 
 import helper
 import logger
@@ -25,6 +24,11 @@ def main():
         case[]:
             shell()
 
+        # help
+        case['h' | 'help']:
+            logger.print_help()
+            exit()
+
         # setup
         case['setup']:
             setup()
@@ -33,14 +37,13 @@ def main():
         case['create', list_name]:
             create(list_name)
 
-        # rename
-        case['rename', list_name, new_list_name]:
-            pass
-
-        # help
-        case['h' | 'help']:
-            logger.print_help()
-            exit()
+        # lists
+        case['lists']:
+            logger.print_available_lists(AVAILABLE_LISTS)
+        
+        # settings
+        case[list_name, 'settings'] if list_name in AVAILABLE_LISTS:
+            settings(list_name)
 
         # add
         case[list_name, 'a' | 'add', text, *args] if list_name in AVAILABLE_LISTS:
@@ -63,6 +66,7 @@ def main():
         # update
         case[list_name, 'u' | 'update', index, text, *args] if list_name in AVAILABLE_LISTS:
             append = False
+            # load args
             if args and len(args) == 2:
                 match args[0]:
                     # deadline
@@ -83,6 +87,7 @@ def main():
         # get
         case[list_name, *args] if list_name in AVAILABLE_LISTS:
             deadline = None
+            # load args
             if args and len(args) == 2:
                 match args[0]:
                     # deadline
@@ -494,6 +499,51 @@ def remove(list_name: str, index_list: list):
 
     # print the list
     logger.print_list(list, remove=delete_list[0]['text'])
+
+# SETTINGS
+def settings(list_name: str):
+    if list_name in ['a', 'all', 'l', 'local']:
+        actions = ['Delete', 'Exit']
+    else:
+        actions = ['Rename', 'Delete', 'Exit']
+
+    print(f'{list_name} settings:')
+    for i, action in enumerate(actions):
+        print(f'   [{i + 1}] {action}')
+    print()
+    while True:
+        
+        i = input('> ')
+        if i in [str(i + 1) for i in range(len(actions))]:
+            break
+    
+    match actions[int(i) - 1]:
+        case 'Rename':
+            new_name = input('Insert the new name: ')
+            list = helper.load_file(AVAILABLE_LISTS[list_name])
+            list['name'] = new_name
+            
+            # calculate new path
+            new_path = "/".join(AVAILABLE_LISTS[list_name].split('/')[:-1]) + '/' + new_name + '.todo'
+
+            # delete the file
+            helper.delete_file(AVAILABLE_LISTS[list_name])
+
+            # write new file
+            helper.write_file(new_path, list)
+
+        case 'Delete':
+            while True:
+                i = input(f'Are you sure to delete {list_name} [y/N]? ')
+                if i == '' or i == 'n' or i == 'N':
+                    break
+                elif i == 'y' or i == 'Y':
+                    # delete the list
+                    helper.delete_file(AVAILABLE_LISTS[list_name])
+                    break
+
+        case 'Exit':
+            exit()
 
 
 if __name__ == '__main__':

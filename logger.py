@@ -8,13 +8,11 @@ NAME:
 USAGE:
    todo [list name] [command] [arguments...]
 
-# VERSION:
-#   0.15.0
+VERSION:
+   1.0.0
 
 LISTS:
     all           Main list (todo-app/.todo/all.todo)
-    today         Computed today list stored inside list "all" (todo-app/.todo/all.todo)
-    tomorrow      Computed tomorrow list stored inside list "all" (todo-app/.todo/all.todo)
     local         Local todo list stored in local folder (./local.todo)
 
 COMMANDS: 
@@ -80,6 +78,12 @@ def print_list(
     print(f"\"{list['name']}\" list is empty.")
   
   print()
+
+def print_available_lists(available_lists):
+  for list in available_lists:
+    if list in ['a', 'l']:
+      continue
+    print(list)
 
 def error(message: str):
   sys.stderr.write(f"Error: {message}\n")

@@ -4,7 +4,7 @@ import json
 
 import logger
 
-def load_lists(path: str):
+def load_lists(path: str) -> dict:
     res = {
         'all': path + '/all.todo',  'a': path + '/all.todo',
         'local': 'local.todo',      'l': 'local.todo',
@@ -33,14 +33,14 @@ def is_tomorrow(deadline) -> bool:
 
     return datetime.date.today() + datetime.timedelta(days=1) >= datetime.date.fromisoformat(deadline) and not is_today(deadline)
 
-def calculate_date(deadline: str):
+def calculate_date(deadline: str) -> datetime:
     match deadline:
         case 'today':
             return datetime.date.today()
         case 'tomorrow':
             return datetime.date.today() + datetime.timedelta(days=1)
 
-def filter(list: dict, deadline: str):
+def filter(list: dict, deadline: str) -> list:
     def recursive_filter(list: list, validator):
         filtered = []
         for todo in list:
@@ -89,6 +89,12 @@ def load_file(path: str) -> dict | None:
     with open(path, 'r') as file:   
         return json.load(file)
 
-def write_file(path: str, data: dict):
+def write_file(path: str, data: dict) -> None:
 	with open(path, 'w') as file:
 		json.dump(data, file)
+
+def delete_file(path: str):
+    if os.path.isfile(path):
+        os.remove(path)
+    else:
+        logger.error('Invalid path.')
