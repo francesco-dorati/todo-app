@@ -1,4 +1,5 @@
 import sys
+import helper
 
 def print_help():
   print("""
@@ -35,55 +36,137 @@ def clear_screen():
     else:        
         _ = os.system('clear') # unix
 
+"""
+Added ""[ at position 1.2][ due tomorrow].
+Removed "" from position  list.
+Removed "" from list.
+
+All list[ filtered by {filter}]:
+  [1] ciao
+
+"""
 def print_list(
-              list: dict, 
-              filter: str = None, 
-              add: str = None, 
-              update: tuple[str, str] = None, 
-              remove: str = None, 
-              move: tuple[str, int, int] = None,
-              ):
+  list_name: str,
+  list: list, 
+  filter: str = None, 
+  add: dict = None, # {'text', 'index'}
+  update: dict = None, # {'index', 'new'} 
+  move: dict = None, # {'text', 'old', 'new'}
+  remove: dict | list = None, # {'text', 'index'} | ['1.2', '4.3.1]
+):
   print()
+
+  colors = {
+    'black': "\033[0;30m",
+    'red': "\033[0;31m",
+    'green': "\033[0;32m", 
+    'yellow': "\033[0;33m",
+    'blue': "\033[0;34m",
+    'purple': "\033[0;35m",
+    'cyan': "\033[0;36m", 
+    'white': "\033[0;37m"
+  }
+
+  background = {
+    'on_black': "\033[0;40m",
+    'on_red': "\033[0;41m",
+    'on_green': "\033[0;42m", 
+    'on_yellow': "\033[0;43m",
+    'on_blue': "\033[0;44m",
+    'on_purple': "\033[0;45m",
+    'on_cyan': "\033[0;46m", 
+    'on_white': "\033[0;47m", 
+  }
+
+  attributes = {
+    'bold': "\033[1m",
+    'dark': "\033[2m",
+    'italic': "\033[3m",
+    'underline': "\033[4m",
+    'negative': "\033[7m",
+    'crossed': "\033[9m",
+    'end': "\033[0m"
+  }
+
+  # colored
+  def colored(text, color=None, background=None, attrs=[]):
+    s = ''
+
+    if color:
+      s += colors[color]
+    if background:
+      s += background[background]
+    if attrs:
+      for a in attrs:
+        s += attributes[a]
+
+    s += text + attributes['end']
+
+    return s
 
   # recursive function
   def recursive_print(list: list, parent_index: str = None):
     for index, todo in enumerate(list):
-      index += 1 
+      index += 1
+
       if parent_index:
-        tabs_number = len(parent_index.split('.'))
-        print('\t' * tabs_number + f"[{parent_index}.{index}] {todo['text']}")
+        tabs_number = len(parent_index.split('.')) + 1
+        index = f'{parent_index}.{index}'
       else:
-        print(f"[{index}] {todo['text']}")
+        tabs_number = 1
+        index = str(index)
+
+      print('    ' * tabs_number +
+        f"[{colored(index)}]"+
+        f" {todo['text']}" +
+        (colored(f' [{helper.compute_date(todo["deadline"])}]', 'blue') if todo["deadline"] and not filter else ''))
     
       if todo['children']:
-        recursive_print(todo['children'], f'{parent_index}.{index}' if parent_index else str(index))
+        recursive_print(todo['children'], index if parent_index else str(index))
 
+  # notifications
   if add:
-    print(f"Added \"{add}\" successfully to {list['name']}.\n")
-
+    print(f"Added \"{add['text']}\" at {add['index']} in {list_name}.\n")
   elif update:
-    print(f"Updated \"{update[0]}\" to \"{update[1]}\" successfully from {list['name']}.\n")
-
-  elif remove:
-    print(f"Removed \"{remove}\" successfully from {list['name']}.\n")
-
+    print(f"Updated {update['index']} to \"{update['new']}\" in {list_name}.\n")
   elif move:
-    print(f'Moved \"{move[0]}\" from position {move[1]} to position {move[2]}.\n')
+    print(f"Moved \"{move['text']}\" from {move['old']} to {move['new']} in {list_name}.\n")
+  elif remove:
+    if 'text' in remove:
+      print(f"Removed \"{remove['text']}\" at {remove['index']} from {list_name}.\n")
+    else:
+      print(colored("Removed", 'red') + ' items ', end='')
+      print(*[colored(index, 'blue') for index in remove], sep=', ', end='')
+      print(f" from {colored(list_name, attrs=['bold'])}\n")
 
-  if list['todos']:
-    print(f"\"{list['name']}\" list:")
-    recursive_print(list['todos'])
+  # title
+  print(f"{colored(list_name, attrs=['bold'])} list" +
+   (f" filtered by {colored(filter, 'blue')}" if filter else '') +
+   ":")
 
+  # list
+  if list:
+    recursive_print(list)
   else:
-    print(f"\"{list['name']}\" list is empty.")
+    print(colored(f"   list is empty.", attrs=['dark'])) # grey
   
   print()
 
+"""
+Your lists:
+  - all [10]
+  - local [4]
+  - projects [5]
+
+"""
 def print_available_lists(available_lists):
+  print('\nYour lists:')
   for list in available_lists:
     if list in ['a', 'l']:
       continue
-    print(list)
+
+    length = len(helper.load_file(available_lists[list])['todos'])
+    print(f'  - {list} [{length}]')
 
 def error(message: str):
   sys.stderr.write(f"Error: {message}\n")

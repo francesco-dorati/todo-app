@@ -2,7 +2,7 @@ import datetime
 import os
 import json
 
-import logger
+from logger import error
 
 def load_lists(path: str) -> dict:
     res = {
@@ -21,18 +21,23 @@ def load_lists(path: str) -> dict:
     return res
 
 
-def is_today(deadline) -> bool:
-    if not deadline:
-        return False
+# DATE
+# date to str
+def compute_date(date) -> str:
+    if not date:
+        return ''
 
-    return datetime.date.today() >= datetime.date.fromisoformat(deadline)
-
-def is_tomorrow(deadline) -> bool:
-    if not deadline:
-        return False
-
-    return datetime.date.today() + datetime.timedelta(days=1) >= datetime.date.fromisoformat(deadline) and not is_today(deadline)
-
+    # today
+    elif datetime.date.today() >= datetime.date.fromisoformat(date):
+        return 'today'
+    
+    # tomorrow
+    elif datetime.date.today() + datetime.timedelta(days=1) >= datetime.date.fromisoformat(date):
+        return 'tomorrow' 
+    
+    else:
+        return date
+# str to date
 def calculate_date(deadline: str) -> datetime:
     match deadline:
         case 'today':
@@ -40,48 +45,48 @@ def calculate_date(deadline: str) -> datetime:
         case 'tomorrow':
             return datetime.date.today() + datetime.timedelta(days=1)
 
+
 def filter(list: dict, deadline: str) -> list:
-    def recursive_filter(list: list, validator):
+    def recursive_filter(list: list, deadline: str = None):
         filtered = []
         for todo in list:
-            todo['children'] = recursive_filter(todo['children'], validator)
-            if validator(todo['deadline']) or todo['children']:
-                filtered.append(todo)
+            todo['children'] = recursive_filter(todo['children'], deadline)
+            # filter by deadline
+            if deadline:
+                if compute_date(todo['deadline']) == deadline or todo['children']:
+                    filtered.append(todo)
         return filtered
 
-    match deadline:
-        case 'today':
-            list['name'] = 'today'
-            list['todos'] = recursive_filter(list['todos'], is_today)
-        case 'tomorrow':
-            list['name'] = 'tomrrow'
-            list['todos'] = recursive_filter(list['todos'], is_tomorrow)
+    if deadline:
+        list['todos'] = recursive_filter(list['todos'], deadline)
 
     return list
-
 
 def unpack_indexes(index_string: str, list: list = None) -> list:
     try:
         index_list = [int(i) - 1 for i in index_string.split(".")]
     except ValueError:
-        logger.error('Invalid index.')
+        error('Invalid index.')
 
     # validate indexes
     for index in index_list:
         # index out of range
         if index < 0:
-            logger.error('Invalid index.')
+            error('Invalid index.')
 
         # index out of range
         if list: 
             if index >= len(list):
-                logger.error('Invalid index.')
+                error('Invalid index.')
 
             # next child
             list = list[index]['children']
 
     return index_list 
 
+
+# FILE
+# load
 def load_file(path: str) -> dict | None:
     if not os.path.isfile(path):
         return None
@@ -89,12 +94,14 @@ def load_file(path: str) -> dict | None:
     with open(path, 'r') as file:   
         return json.load(file)
 
+# write
 def write_file(path: str, data: dict) -> None:
 	with open(path, 'w') as file:
 		json.dump(data, file)
 
+# delete
 def delete_file(path: str):
     if os.path.isfile(path):
         os.remove(path)
     else:
-        logger.error('Invalid path.')
+        error('Invalid path.')

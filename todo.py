@@ -86,16 +86,16 @@ def main():
 
         # get
         case[list_name, *args] if list_name in AVAILABLE_LISTS:
-            deadline = None
+            filter = None
             # load args
             if args and len(args) == 2:
                 match args[0]:
-                    # deadline
-                    case 'd' | 'due':
-                        deadline = args[1]
-                        if not deadline in ['today', 'tomorrow']:
+                    # filter
+                    case 'f' | 'filter':
+                        filter = args[1]
+                        if not filter in ['today', 'tomorrow']:
                             logger.error('Deadline not available.')
-            get(list_name, deadline=deadline)
+            get(list_name, filter=filter)
 
         case _:
             logger.error('Wrong Command')
@@ -273,7 +273,7 @@ def create(name: str = None):
     print(f"Created new {name} list successfully.")
 
 # GET
-def get(list_name: str, deadline: str = None):
+def get(list_name: str, filter: str = None):
     if not MAIN_FOLDER_PATH:
         logger.error(
             'Todo list is not set up yet.\n Initialize it by running \'todo setup\'')
@@ -286,11 +286,11 @@ def get(list_name: str, deadline: str = None):
         logger.error(
             f'List \'{list["name"]}\' is not set up yet. Initialize it by running \'todo setup\'')
 
-    # filter list by deadline
-    helper.filter(list, deadline)
+    # filter list by filter
+    helper.filter(list, filter)
 
     # print the list
-    logger.print_list(list)
+    logger.print_list(list['name'], list['todos'], filter=filter)
 
 # ADD
 def add(list_name: str, text: str, deadline: str = None, position: str = None):
@@ -332,8 +332,10 @@ def add(list_name: str, text: str, deadline: str = None, position: str = None):
             if i == last_index:
                 if child:
                     current[index]['children'].append(todo)
+                    final_position = position + '.' + str(len(current[index]['children']))
                 else:
                     current.insert(index, todo)
+                    final_position = position
             else:
                 # next child
                 current = current[index]['children']
@@ -342,15 +344,19 @@ def add(list_name: str, text: str, deadline: str = None, position: str = None):
     else:
         # insert the todo
         list['todos'].append(todo)
+        final_position = len(list['todos'])
 
     # write to file
     helper.write_file(AVAILABLE_LISTS[list_name], list)
 
     # print the list
-    logger.print_list(list, add=text)
+    logger.print_list(list['name'], list['todos'], add={
+        'text': text,
+        'index': final_position
+    })
 
 # UPDATE
-def update(list_name: str, index_string: str, text: str, append: bool = False):
+def update(list_name: str, index_string: str, new_text: str, append: bool = False):
     if not MAIN_FOLDER_PATH:
         logger.error(
             'Todo list is not set up yet.\n Initialize it by running \'todo setup\'')
@@ -372,9 +378,9 @@ def update(list_name: str, index_string: str, text: str, append: bool = False):
         if i == last_index:
             old_text = current[index]['text']
             if append:
-               current[index]['text'] = current[index]['text'] + text
+               current[index]['text'] = current[index]['text'] + new_text
             else:
-                current[index]['text'] = text
+                current[index]['text'] = new_text
         else:
             # next child
             current = current[index]['children']
@@ -383,7 +389,7 @@ def update(list_name: str, index_string: str, text: str, append: bool = False):
     helper.write_file(AVAILABLE_LISTS[list_name], list)
 
     # print the list
-    logger.print_list(list, update=(old_text, text))
+    logger.print_list(list['name'], list['todos'], update={'index': index_string, 'new': new_text})
 
 # MOVE
 def move(list_name: str, start_string: int, end_string: int):
@@ -443,7 +449,7 @@ def move(list_name: str, start_string: int, end_string: int):
     helper.write_file(AVAILABLE_LISTS[list_name], list)
 
     # print the list
-    logger.print_list(list, move=(todo['text'], start_string, end_string))
+    logger.print_list(list['name'], list['todos'], move={'text': todo['text'], 'old': start_string, 'new': end_string})
 
 # REMOVE
 def remove(list_name: str, index_list: list):
@@ -498,7 +504,7 @@ def remove(list_name: str, index_list: list):
     helper.write_file(AVAILABLE_LISTS[list_name], list)
 
     # print the list
-    logger.print_list(list, remove=delete_list[0]['text'])
+    logger.print_list(list['name'], list['todos'], remove=(index_list if len(index_list) > 1 else {'text': delete_list[0]['text'], 'index': index_list[0]}))
 
 # SETTINGS
 def settings(list_name: str):
@@ -545,6 +551,6 @@ def settings(list_name: str):
         case 'Exit':
             exit()
 
-
+ 
 if __name__ == '__main__':
     main()
