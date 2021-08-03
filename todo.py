@@ -6,7 +6,16 @@ import datetime
 import helper
 import logger
 
+###
 
+todo = Todo() # loads settings
+...
+
+todo.get_list(path)
+
+
+
+###
 CODEBASE_PATH = '/'.join(os.path.realpath(__file__).split('/')[:-1]) + '/'
 SETTINGS_PATH = CODEBASE_PATH + 'settings.json'
 
